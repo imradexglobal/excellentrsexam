@@ -178,6 +178,11 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
 </head>
 <body>
   <div class="container">
@@ -219,6 +224,10 @@
       </select>
     </div>
     <div id="subjectNotice" class="notice warn" style="display:none;"></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <input type="checkbox" id="mockModeToggle" onchange="toggleMockMode()">
+      <label for="mockModeToggle" style="font-weight:600;margin:0;cursor:pointer;">Mock Mode — practice only, not submitted to cloud</label>
+    </div>
     <button class="btn" id="startBtn" onclick="startQuiz()" disabled>Start Exam</button>
   </div>
 
@@ -445,13 +454,14 @@ updateConfigDisplay();
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "admin";
 let isAdminView = false;
+var adminAllResults = [];
 
 function openAdminLogin() {
   hideAllScreens();
   document.getElementById("adminLoginScreen").classList.add("active");
   document.getElementById("adminErr").style.display = "none";
 }
-function adminLogin() {
+async function adminLogin() {
   var u = document.getElementById("adminUser").value;
   var p = document.getElementById("adminPass").value;
   if (u === ADMIN_USER && p === ADMIN_PASS) {
@@ -460,7 +470,7 @@ function adminLogin() {
     document.getElementById("adminScreen").classList.add("active");
     loadOfflineQueue();
     syncOfflineQueue();
-    renderResultsTable();
+    await renderResultsTable();
   } else {
     document.getElementById("adminErr").style.display = "block";
   }
@@ -1376,7 +1386,13 @@ let studentName = "";
 let studentClass = "";
 let studentSubject = "";
 let answers = {};          // {questionIndex: "A"|"B"|"C"|"D"}
-let timerInterval = null;
+let isMockMode = false;    // when true, results are NOT sent to Firestore
+
+function toggleMockMode() {
+  isMockMode = document.getElementById("mockModeToggle").checked;
+}
+
+ let timerInterval = null;
 let timeLeft = EXAM_MINUTES * 60;
 let startTime = null;
 let examFinished = false;
@@ -1426,6 +1442,8 @@ function startQuiz() {
     alert("Questions for this subject have not been set yet.");
     return;
   }
+
+  isMockMode = document.getElementById("mockModeToggle").checked;
 
   var pool = bankFor(studentClass, studentSubject).slice();
   selectedQuestions = pickQuestions(pool, TOTAL_QUESTIONS);
@@ -1637,17 +1655,79 @@ function submitQuiz(isTimeout = false) {
     <p><strong>Time Spent:</strong> ${timeSpentStr}</p>
     <p><strong>Date:</strong> ${endTime.toLocaleString()}</p>
     ${isTimeout ? "<p style='color:#dc3545;'><strong>Note:</strong> Time expired &ndash; exam auto-submitted.</p>" : ""}
+    ${isMockMode ? "<p style='color:#2a5298;'><strong>Mock Mode:</strong> This result was NOT submitted to the cloud.</p>" : ""}
   `;
 
-  saveResultToFirestore({
-    name: studentName,
-    class: studentClass,
-    subject: studentSubject,
-    score: score,
-    total: total,
-    timeSpent: timeSpentStr,
-    date: endTime.toLocaleString()
-  });
+  if (!isMockMode) {
+    saveResultToFirestore({
+      name: studentName,
+      class: studentClass,
+      subject: studentSubject,
+      score: score,
+      total: total,
+      timeSpent: timeSpentStr,
+      date: endTime.toLocaleString()
+    });
+  }
+
+  setupMockModeResultUI();
+}
+
+function setupMockModeResultUI() {
+  const downloadNote = document.getElementById("downloadNote");
+  const btnContainer = document.querySelector("#resultsScreen .nav-buttons");
+  if (!btnContainer) return;
+
+  if (isMockMode) {
+    if (downloadNote) {
+      downloadNote.innerHTML = "&#9989; <strong>Mock Mode:</strong> Result kept locally only — not synced to Firestore or visible to admin.<br>You may retake this same quiz as many times as you like.";
+      downloadNote.style.background = "#e7f0ff";
+      downloadNote.style.borderLeftColor = "#2a5298";
+    }
+    btnContainer.innerHTML = `
+      <button class="btn btn-success" onclick="retakeMockTest()">Retake Same Quiz</button>
+      <button class="btn btn-secondary" onclick="location.reload()">Start New Exam</button>
+      <button class="btn" onclick="openAdminLogin()">Admin Login</button>
+    `;
+  } else {
+    if (downloadNote) {
+      downloadNote.innerHTML = "&#9989; Result saved to <strong>Firestore</strong> (synced when online).<br>Your result is stored in the cloud and visible to the admin.";
+      downloadNote.style.background = "";
+      downloadNote.style.borderLeftColor = "";
+    }
+    btnContainer.innerHTML = `
+      <button class="btn btn-secondary" onclick="location.reload()">Take Another Exam</button>
+      <button class="btn btn-success" onclick="showReview()">Review Answers</button>
+      <button class="btn" onclick="openAdminLogin()">Admin Login</button>
+    `;
+  }
+}
+
+function retakeMockTest() {
+  if (!studentClass || !studentSubject || !bankAvailable(studentClass, studentSubject)) {
+    location.reload();
+    return;
+  }
+  var pool = bankFor(studentClass, studentSubject).slice();
+  selectedQuestions = pickQuestions(pool, TOTAL_QUESTIONS);
+
+  currentPage = 0;
+  answers = {};
+  timeLeft = EXAM_MINUTES * 60;
+  examFinished = false;
+  startTime = new Date();
+
+  document.getElementById("resultsScreen").classList.remove("active");
+  document.getElementById("quizScreen").classList.add("active");
+
+  document.getElementById("sidebarSubject").textContent = studentSubject;
+  document.getElementById("sidebarClass").textContent = "Class: " + studentClass;
+  document.getElementById("scoreTotal").textContent = "/ " + TOTAL_QUESTIONS;
+
+  renderPage();
+  renderQuestionNav();
+  startTimer();
+  saveExamState();
 }
 
 function csvEscape(value) {
@@ -1716,25 +1796,106 @@ function printResults() {
   win.document.close();
 }
 
+async function fetchResultsFromFirestore() {
+  var all = [];
+  try {
+    var snap = await db.collection(RESULTS_COLL).orderBy("createdAt", "desc").get();
+    snap.forEach(function (doc) {
+      var d = doc.data();
+      d._docId = doc.id;
+      all.push(d);
+    });
+  } catch (e) {
+    console.error("firestore fetch failed", e);
+  }
+  return all;
+}
+
 async function renderResultsTable() {
   var container = document.getElementById("adminResultsContainer");
   var emptyMsg = document.getElementById("adminEmptyMsg");
-  var all = [];
-  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
   var clsFilter = document.getElementById("adminClassFilter").value;
+  var status = document.getElementById("adminSyncStatus");
+
+  var fsResults = await fetchResultsFromFirestore();
+
+  var localResults = [];
+  try {
+    localResults = JSON.parse(localStorage.getItem("examResults") || "[]");
+    if (!Array.isArray(localResults)) localResults = [];
+  } catch (e) { localResults = []; }
+
+  adminAllResults = [];
+  var seen = {};
+  fsResults.forEach(function (r) {
+    var key = r.uid || (rEsc(r.name) + "|" + rEsc(r.date));
+    seen[key] = true;
+    adminAllResults.push(r);
+  });
+  localResults.forEach(function (r) {
+    var key = r.uid || (rEsc(r.name) + "|" + rEsc(r.date));
+    if (!seen[key]) { seen[key] = true; adminAllResults.push(r); }
+  });
+
   container.innerHTML = "";
-  var data = all.filter(function (r) { return !clsFilter || r.class === clsFilter; });
-  if (data.length === 0) { container.appendChild(emptyMsg); return; }
+  var data = adminAllResults.filter(function (r) { return !clsFilter || r.class === clsFilter; });
+  if (data.length === 0) {
+    if (status) status.textContent = fsResults.length ? fsResults.length + " result(s) from Firestore." : "No results yet.";
+    container.appendChild(emptyMsg);
+    return;
+  }
+
   var tbl = document.createElement("table");
   tbl.className = "admin-table";
   var rowsHtml = "";
-  all.forEach(function (r, ai) {
+  adminAllResults.forEach(function (r, i) {
     if (clsFilter && r.class !== clsFilter) return;
     var pct = r.total ? (r.score / r.total * 100).toFixed(1) : 0;
-    rowsHtml += "<tr onclick=\"openAdminDetail(" + ai + ")\" style='cursor:pointer;'><td>" + r.name + "</td><td>" + r.class + "</td><td>" + r.subject + "</td><td>" + r.score + "</td><td>" + r.total + "</td><td>" + pct + "</td><td>" + r.timeSpent + "</td><td>" + r.date + "</td></tr>";
+    rowsHtml += "<tr style='cursor:pointer;' onclick=\"openAdminDetail(" + i + ")\">" +
+      "<td>" + rEsc(r.name) + "</td>" +
+      "<td>" + rEsc(r.class) + "</td>" +
+      "<td>" + rEsc(r.subject) + "</td>" +
+      "<td>" + rEsc(r.score) + "</td>" +
+      "<td>" + rEsc(r.total) + "</td>" +
+      "<td>" + pct + "</td>" +
+      "<td>" + rEsc(r.timeSpent) + "</td>" +
+      "<td>" + rEsc(r.date) + "</td>" +
+      "<td style='text-align:center;'><button class='btn btn-danger' onclick=\"event.stopPropagation(); deleteAdminResult(" + i + ")\" style='padding:4px 8px;font-size:0.75rem;'>Delete</button></td>" +
+      "</tr>";
   });
-  tbl.innerHTML = "<thead><tr><th>Name</th><th>Class</th><th>Subject</th><th>Score</th><th>Total</th><th>%</th><th>Time</th><th>Date</th></tr></thead><tbody>" + rowsHtml + "</tbody>";
+  tbl.innerHTML = "<thead><tr><th>Name</th><th>Class</th><th>Subject</th><th>Score</th><th>Total</th><th>%</th><th>Time</th><th>Date</th><th>Action</th></tr></thead><tbody>" + rowsHtml + "</tbody>";
   container.appendChild(tbl);
+  if (status) status.textContent = adminAllResults.length + " result(s) loaded (Firestore + local).";
+}
+
+async function deleteAdminResult(idx) {
+  var r = adminAllResults[idx];
+  if (!r) return;
+  if (!confirm("Delete result for " + rEsc(r.name) + "?")) return;
+
+  if (r._docId) {
+    try {
+      await db.collection(RESULTS_COLL).doc(r._docId).delete();
+    } catch (e) {
+      console.error("firestore delete failed", e);
+      alert("Could not delete from Firestore (offline?). Local entry removed.");
+    }
+  }
+
+  try {
+    var local = JSON.parse(localStorage.getItem("examResults") || "[]");
+    if (Array.isArray(local)) {
+      local = local.filter(function (lr) {
+        var sameUid = r.uid && lr.uid && lr.uid === r.uid;
+        var sameNoUid = !r.uid && !lr.uid && lr.name === r.name && lr.date === r.date;
+        return !(sameUid || sameNoUid);
+      });
+      localStorage.setItem("examResults", JSON.stringify(local));
+    }
+  } catch (e) {}
+
+  adminAllResults.splice(idx, 1);
+  renderResultsTable();
 }
 
 // ===================== OFFLINE / ONLINE SYNC =====================
@@ -1756,7 +1917,8 @@ function saveExamState() {
       deadline: startTime ? startTime.getTime() + EXAM_MINUTES * 60 * 1000 : null,
       examFinished: examFinished,
       TOTAL_QUESTIONS: TOTAL_QUESTIONS,
-      EXAM_MINUTES: EXAM_MINUTES
+      EXAM_MINUTES: EXAM_MINUTES,
+      isMockMode: isMockMode
     }));
   } catch (e) {}
 }
@@ -1780,6 +1942,7 @@ function restoreExamState() {
     timeLeft = st.deadline ? Math.max(0, Math.floor((st.deadline - now) / 1000)) : EXAM_MINUTES * 60;
     startTime = st.startTime ? new Date(st.startTime) : null;
     examFinished = st.examFinished || false;
+    isMockMode = st.isMockMode === true;
 
     if (timeLeft <= 0) {
       document.getElementById("startScreen").classList.remove("active");
@@ -1796,6 +1959,8 @@ function restoreExamState() {
     document.getElementById("sidebarSubject").textContent = studentSubject;
     document.getElementById("sidebarClass").textContent = "Class: " + studentClass;
     document.getElementById("scoreTotal").textContent = "/ " + TOTAL_QUESTIONS;
+    var mt = document.getElementById("mockModeToggle");
+    if (mt) mt.checked = isMockMode;
 
     renderPage();
     renderQuestionNav();
@@ -1857,9 +2022,7 @@ function hideReview() {
 
 // ===================== ADMIN DETAIL =====================
 function openAdminDetail(idx) {
-  var all = [];
-  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
-  var rec = all[idx];
+  var rec = adminAllResults[idx];
   if (!rec) return;
   document.getElementById("adminScreen").classList.remove("active");
   document.getElementById("adminDetailScreen").classList.add("active");
