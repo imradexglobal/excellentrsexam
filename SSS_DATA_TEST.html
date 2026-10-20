@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSS / SSS CBT Exam Platform</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    min-height: 100vh;
+    color: #333;
+    padding: 20px;
+  }
+  .container { max-width: 860px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); overflow: hidden; position: relative }
+  .logo-watermark {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 300px; height: 300px; opacity: 0.08; pointer-events: none; z-index: 0;
+    background-image: url('logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center
+  }
+  .school-branding { text-align: center; margin-bottom: 10px; position: relative; z-index: 1 }
+  .school-name { font-size: 1.7rem; font-weight: 800; color: #1e3c72; letter-spacing: 1px; margin: 0 }
+  .school-tagline { font-size: 1rem; color: #666; font-weight: 600; margin: 4px 0 0; letter-spacing: 0.5px }
+  header { background: #1e3c72; color: white; padding: 22px 30px; text-align: center }
+  header h1 { font-size: 1.6rem; margin-bottom: 4px }
+  header p { font-size: 0.95rem; opacity: 0.9 }
+
+  .quiz-body { display: flex; gap: 20px; align-items: flex-start }
+  .quiz-main { flex: 1; min-width: 0 }
+
+  .sidebar {
+    width: 190px; flex-shrink: 0; background: #f8f9fa;
+    border: 1px solid #e9ecef; border-radius: 10px;
+    overflow: hidden; max-height: 580px; overflow-y: auto
+  }
+  .sidebar .calendar-header {
+    background: #2a5298; color: white; padding: 12px; text-align: center; position: sticky; top: 0; z-index: 2
+  }
+  .sidebar .calendar-header h3 { font-size: 0.95rem; margin: 0 }
+  .sidebar .calendar-header p { font-size: 0.75rem; margin: 4px 0 0; opacity: 0.9 }
+
+  .question-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    padding: 10px;
+  }
+  .question-nav button {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    color: #495057;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .question-nav button:hover { border-color: #2a5298; background: #f0f4ff }
+  .question-nav button.active { border-color: #2a5298; background: #2a5298; color: white }
+  .question-nav button.current { border-color: #28a745; box-shadow: 0 0 0 2px rgba(40,167,69,0.35) }
+  .question-nav button:disabled { opacity: 0.6; cursor: not-allowed }
+
+  .screen { display: none; padding: 30px }
+  .screen.active { display: block }
+
+  .form-group { margin-bottom: 20px }
+  label { display: block; font-weight: 600; margin-bottom: 6px; color: #1e3c72 }
+  input[type="text"], select {
+    width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem
+  }
+  input:focus, select:focus { outline: none; border-color: #2a5298 }
+
+  .notice {
+    background: #e7f3ff; border-left: 4px solid #2a5298; padding: 12px 16px;
+    margin: 0 0 20px; border-radius: 0 8px 8px 0; font-size: 0.95rem
+  }
+  .notice.warn { background: #fff3cd; border-left-color: #ffc107; color: #856404 }
+
+  .btn {
+    display: inline-block; background: #2a5298; color: white; border: none; padding: 13px 28px; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background 0.2s
+  }
+  .btn:hover { background: #1e3c72 }
+  .btn:disabled { background: #aaa; cursor: not-allowed }
+  .btn-secondary { background: #6c757d }
+  .btn-secondary:hover { background: #5a6268 }
+  .btn-success { background: #28a745 }
+  .btn-success:hover { background: #218838 }
+  .btn-danger { background: #dc3545 }
+  .btn-danger:hover { background: #c82333 }
+
+  .quiz-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 10px
+  }
+  .timer { font-size: 1.3rem; font-weight: 700; color: #dc3545; background: #fff3cd; padding: 8px 16px; border-radius: 8px }
+  .timer.warning { animation: pulse 1s infinite }
+  @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.6 } }
+  .progress { font-weight: 600; color: #1e3c72 }
+
+  .question-card {
+    background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px;
+    padding: 20px; margin-bottom: 18px
+  }
+  .question-card h3 {
+    font-size: 1.05rem; margin-bottom: 14px; color: #1e3c72; line-height: 1.4
+  }
+  .question-card .q-topic {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; color: #2a5298;
+    background: #e7f0ff; border-radius: 20px; padding: 3px 10px; margin-bottom: 10px
+  }
+  .options label {
+    display: block; background: white; border: 2px solid #dee2e6; border-radius: 8px;
+    padding: 11px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; font-weight: 500
+  }
+  .options label:hover { border-color: #2a5298; background: #f0f4ff }
+  .options input { margin-right: 10px }
+
+  .nav-buttons { display: flex; justify-content: space-between; margin-top: 25px; gap: 12px }
+
+  .results-box { text-align: center; padding: 20px 0 }
+  .score-circle {
+    width: 140px; height: 140px; border-radius: 50%; background: #28a745; color: white;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    margin: 0 auto 25px; font-size: 2.2rem; font-weight: 700
+  }
+  .score-circle.low { background: #dc3545 }
+  .score-circle.medium { background: #ffc107; color: #333 }
+  .result-details {
+    background: #f8f9fa; border-radius: 10px; padding: 20px; text-align: left; margin-bottom: 25px
+  }
+  .result-details p { margin: 8px 0; font-size: 1.05rem }
+  .download-note {
+    background: #e7f3ff; border-left: 4px solid #2a5298; padding: 12px 16px;
+    margin: 20px 0; border-radius: 0 8px 8px 0; font-size: 0.95rem
+  }
+
+  footer {
+    text-align: center; padding: 15px; font-size: 0.85rem; color: #666; background: #f1f3f5
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    body { padding: 8px; }
+    .container { border-radius: 0; }
+    header { padding: 15px 12px; }
+    header h1 { font-size: 1.25rem; }
+    header p { font-size: 0.85rem; }
+    .quiz-body { flex-direction: column; gap: 0; }
+    .sidebar {
+      width: 100%; max-height: 220px; order: 2;
+    }
+    .quiz-main { order: 1; }
+    .question-nav { grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 8px; }
+    .question-nav button { font-size: 0.7rem; padding: 0; }
+    .question-nav button span { display: none; }
+    .screen { padding: 15px 10px; }
+    .quiz-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .timer { font-size: 1.1rem; padding: 6px 12px; }
+    .nav-buttons { flex-direction: column; gap: 8px; }
+    .nav-buttons button { width: 100%; }
+    .form-group { margin-bottom: 14px; }
+    .admin-table { font-size: 0.75rem; }
+    .admin-table th, .admin-table td { padding: 6px 4px; }
+    #adminBtn { padding: 5px 10px; font-size: 0.8rem; }
+  }
+
+  @media (max-width: 400px) {
+    .question-nav { grid-template-columns: repeat(4, 1fr); }
+    .options label { padding: 9px 10px; font-size: 0.9rem; }
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-watermark"></div>
+    <div class="school-branding">
+      <div class="school-name">Excellent Realm School</div>
+      <div class="school-tagline">A Great Place For Education</div>
+    </div>
+    <header>
+    <h1>JSS / SSS CBT Exam Platform</h1>
+    <p id="headerCfg">JSS1 &ndash; JSS3 &amp; SSS1 &ndash; SSS3 | <span id="cfgCount">10</span> Questions | <span id="cfgMins">5</span> Minutes</p>
+    <div style="text-align:right;margin-top:6px;">
+      <button class="btn btn-secondary" id="adminBtn" onclick="openAdminLogin()" style="padding:6px 14px;font-size:0.85rem;">Admin &harr;</button>
+    </div>
+  </header>
+
+  <!-- START SCREEN -->
+  <div id="startScreen" class="screen active">
+    <div class="form-group">
+      <label for="studentName">Full Name</label>
+      <input type="text" id="studentName" placeholder="Enter your full name" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="studentClass">Class</label>
+      <select id="studentClass" onchange="onClassChange()">
+        <option value="">-- Select Class --</option>
+        <option value="JSS1">JSS1</option>
+        <option value="JSS2">JSS2</option>
+        <option value="JSS3">JSS3</option>
+        <option value="SSS1">SSS1</option>
+        <option value="SSS2">SSS2</option>
+        <option value="SSS3">SSS3</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="studentSubject">Subject</label>
+      <select id="studentSubject" onchange="onSubjectChange()">
+        <option value="">-- Select Subject --</option>
+      </select>
+    </div>
+    <div id="subjectNotice" class="notice warn" style="display:none;"></div>
+    <button class="btn" id="startBtn" onclick="startQuiz()" disabled>Start Exam</button>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="quizScreen" class="screen">
+    <div class="quiz-header">
+      <div class="progress" id="progressText">Questions 1 &ndash; 5 of 50</div>
+      <div class="timer" id="timerDisplay">60:00</div>
+    </div>
+
+    <div class="quiz-body">
+      <div class="sidebar">
+        <div class="calendar-header">
+          <h3 id="sidebarSubject">Subject</h3>
+          <p id="sidebarClass">Class: --</p>
+        </div>
+        <div class="question-nav" id="questionNav">
+          <!-- Navigation buttons generated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="quiz-main">
+        <div id="questionsContainer"></div>
+        <div class="nav-buttons">
+          <button class="btn btn-secondary" id="prevBtn" onclick="prevPage()" disabled>&larr; Previous</button>
+          <button class="btn" id="nextBtn" onclick="nextPage()">Next &rarr;</button>
+          <button class="btn btn-success" id="submitBtn" onclick="submitQuiz()" style="display:none;">Submit Exam</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div id="resultsScreen" class="screen">
+    <div class="results-box">
+      <div class="score-circle" id="scoreCircle">
+        <span id="scoreValue">0</span>
+        <small style="font-size:0.9rem;" id="scoreTotal">/ 50</small>
+      </div>
+      <h2 style="margin-bottom:15px; color:#1e3c72;">Exam Completed!</h2>
+      <div class="result-details" id="resultDetails"></div>
+      <div class="download-note" id="downloadNote">
+        &#9989; Result saved to <strong>Firestore</strong> (synced when online).<br>
+        Your result is stored in the cloud and visible to the admin.
+      </div>
+      <div class="nav-buttons" style="justify-content:center;">
+        <button class="btn btn-secondary" onclick="location.reload()">Take Another Exam</button>
+        <button class="btn" onclick="openAdminLogin()">Admin Login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN SCREEN -->
+  <div id="adminLoginScreen" class="screen" style="text-align:center;">
+    <h2 style="color:#1e3c72;margin-bottom:20px;">Admin Login</h2>
+    <div class="form-group" style="max-width:300px;margin:0 auto;">
+      <label for="adminUser">Username</label>
+      <input type="text" id="adminUser" placeholder="admin">
+    </div>
+    <div class="form-group" style="max-width:300px;margin:0 auto 15px;">
+      <label for="adminPass">Password</label>
+      <input type="password" id="adminPass" placeholder="admin">
+    </div>
+    <div id="adminErr" style="color:#dc3545;margin-bottom:12px;font-weight:600;display:none;">Invalid username or password</div>
+    <button class="btn" onclick="adminLogin()" style="max-width:300px;width:100%;">Sign In</button>
+    <p style="margin-top:14px;font-size:0.85rem;color:#666;">Hardcoded: admin / admin</p>
+  </div>
+
+  <!-- ADMIN SCREEN (Results) -->
+  <div id="adminScreen" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <h2 style="color:#1e3c72;">Student Results</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="adminLogout()" style="padding:8px 14px;font-size:0.85rem;">Logout</button>
+        <button class="btn btn-success" onclick="printResults()" style="padding:8px 14px;font-size:0.85rem;">Print / PDF</button>
+        <button class="btn" onclick="exportResultsCSV()" style="padding:8px 14px;font-size:0.85rem;">Export CSV</button>
+      </div>
+    </div>
+    <div class="form-group" style="max-width:300px;margin-bottom:12px;">
+      <label for="adminClassFilter">Filter by Class</label>
+      <select id="adminClassFilter" onchange="renderResultsTable()" style="width:100%;padding:10px;border:2px solid #ddd;border-radius:8px;">
+        <option value="">All Classes</option>
+        <option value="JSS1">JSS1</option>
+        <option value="JSS2">JSS2</option>
+        <option value="JSS3">JSS3</option>
+        <option value="SSS1">SSS1</option>
+        <option value="SSS2">SSS2</option>
+        <option value="SSS3">SSS3</option>
+      </select>
+    </div>
+    <div class="form-group" style="max-width:300px;margin-bottom:12px;">
+      <label style="display:block;margin-bottom:6px;font-weight:600;color:#1e3c72;">Exam Settings</label>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;">
+          <label style="font-size:0.8rem;display:block;margin-bottom:4px;">Total Questions</label>
+          <input type="number" id="adminTotalQuestions" min="1" max="200" value="10" style="width:100%;padding:8px;border:2px solid #ddd;border-radius:8px;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:0.8rem;display:block;margin-bottom:4px;">Exam Minutes</label>
+          <input type="number" id="adminExamMinutes" min="1" max="480" value="5" style="width:100%;padding:8px;border:2px solid #ddd;border-radius:8px;">
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="saveAdminConfig()" style="margin-top:8px;width:100%;">Save Settings</button>
+    </div>
+    <div id="adminResultsContainer">
+      <p id="adminEmptyMsg" style="color:#666;">No results yet.</p>
+    </div>
+    <div id="adminSyncStatus" style="margin-top:10px;font-size:0.8rem;color:#28a745;"></div>
+  </div>
+
+  <footer>
+    JSS / SSS CBT Exam Platform &bull; For educational use only
+  </footer>
+
+<script>
+// ===================== CURRICULUM =====================
+const CURRICULUM = {
+  JSS1: ["Basic Science", "Agriculture", "Computer", "Home Economics"],
+  JSS2: ["Basic Science", "Agriculture", "Computer", "Home Economics"],
+  JSS3: ["Basic Science", "Agriculture", "Computer", "Home Economics"],
+  SSS1: ["Digital Technology"],
+  SSS2: ["Digital Technology"],
+  SSS3: ["Digital Technology"]
+};
+
+// ===================== FIREBASE =====================
+const firebaseConfig = {
+  apiKey: "AIzaSyD-eWfFX1BSoTGqgH917SnvfavQONlfnTI",
+  authDomain: "excellentrsexam.firebaseapp.com",
+  projectId: "excellentrsexam",
+  storageBucket: "excellentrsexam.firebasestorage.app",
+  messagingSenderId: "156354929539",
+  appId: "1:156354929539:web:bf46aecf25f1c37717ccb6",
+  measurementId: "G-9TDCY922BL"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const RESULTS_COLL = "exam_results";
+
+// Offline queue for results when network is down
+let offlineQueue = [];
+function loadOfflineQueue() {
+  try {
+    offlineQueue = JSON.parse(localStorage.getItem("cbtOfflineQueue") || "[]");
+    if (!Array.isArray(offlineQueue)) offlineQueue = [];
+  } catch (e) { offlineQueue = []; }
+}
+function saveOfflineQueue() {
+  try { localStorage.setItem("cbtOfflineQueue", JSON.stringify(offlineQueue)); } catch (e) {}
+}
+// Push queued results to Firestore when back online
+async function syncOfflineQueue() {
+  if (!navigator.onLine || offlineQueue.length === 0) return;
+  const status = document.getElementById("adminSyncStatus");
+  if (status) status.textContent = "Syncing offline results...";
+  const remaining = [];
+  for (const rec of offlineQueue) {
+    try {
+      await db.collection(RESULTS_COLL).add(rec);
+    } catch (e) {
+      remaining.push(rec);
+    }
+  }
+  offlineQueue = remaining;
+  saveOfflineQueue();
+  if (status) status.textContent = offlineQueue.length === 0 ? "All results synced." : offlineQueue.length + " result(s) pending sync.";
+  if (isAdminView) renderResultsTable();
+}
+
+// ===================== CONFIG =====================
+function loadConfig() {
+  try {
+    var c = JSON.parse(localStorage.getItem("cbtConfig") || "{}");
+    return {
+      totalQuestions: parseInt(c.totalQuestions, 10) || 10,
+      examMinutes: parseInt(c.examMinutes, 10) || 5
+    };
+  } catch (e) {
+    return { totalQuestions: 10, examMinutes: 5 };
+  }
+}
+function saveConfig() {
+  try {
+    localStorage.setItem("cbtConfig", JSON.stringify({
+      totalQuestions: TOTAL_QUESTIONS,
+      examMinutes: EXAM_MINUTES
+    }));
+  } catch (e) {}
+}
+function updateConfigDisplay() {
+  var ec = document.getElementById("cfgCount");
+  if (ec) ec.textContent = TOTAL_QUESTIONS;
+  var em = document.getElementById("cfgMins");
+  if (em) em.textContent = EXAM_MINUTES;
+}
+var _cfg = loadConfig();
+let TOTAL_QUESTIONS = _cfg.totalQuestions;
+let EXAM_MINUTES = _cfg.examMinutes;
+const QUESTIONS_PER_PAGE = 1;
+updateConfigDisplay();
+
+// ===================== ADMIN AUTH (hardcoded) =====================
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "admin";
+let isAdminView = false;
+
+function openAdminLogin() {
+  hideAllScreens();
+  document.getElementById("adminLoginScreen").classList.add("active");
+  document.getElementById("adminErr").style.display = "none";
+}
+function adminLogin() {
+  var u = document.getElementById("adminUser").value;
+  var p = document.getElementById("adminPass").value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    isAdminView = true;
+    hideAllScreens();
+    document.getElementById("adminScreen").classList.add("active");
+    loadOfflineQueue();
+    syncOfflineQueue();
+    renderResultsTable();
+  } else {
+    document.getElementById("adminErr").style.display = "block";
+  }
+}
+function adminLogout() {
+  isAdminView = false;
+  hideAllScreens();
+  document.getElementById("startScreen").classList.add("active");
+}
+function hideAllScreens() {
+  ["startScreen","quizScreen","resultsScreen","adminLoginScreen","adminScreen"].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+  });
+}
+
+// ===================== QUESTION BANK STORAGE =====================
+const BANKS = {};
+
+// Each row: [topic, question, optionA, optionB, optionC, optionD, correctIndex(0-3)]
+function defBank(key, rows) {
+  BANKS[key] = rows.map(function (r) {
+    return { t: r[0], q: r[1], o: [r[2], r[3], r[4], r[5]], c: r[6] };
+  });
+}
+
+// BANK_DATA_START
+defBank("JSS1|Basic Science", [
+["Introduction to science","Science is best described as","the systematic study of nature through observation and experiment","the memorising of stories from novels","the drawing of maps and charts","the art of preparing good meals",0],
+["Introduction to science","Which of these is NOT a basic science?","Biology","Chemistry","English Language","Physics",2],
+["Introduction to science","The study of living things such as plants and animals is","chemistry","biology","physics","mathematics",1],
+["Introduction to science","The first step in a scientific investigation is to","make a careful observation","write the conclusion","draw the final graph","compute the average",0],
+["Introduction to science","A tentative explanation that can be tested by further study is called","a result","a law","a chart","a hypothesis",3],
+["Introduction to science","One way in which science is useful to man is that it","helps us to memorise poems","provides methods for treating diseases","teaches us to draw maps","is used only for writing essays",1],
+["Introduction to science","Which of these is a tool used for measuring length?","thermometer","microscope","ruler","barometer",2],
+["Introduction to science","Science differs from technology because science","is concerned with art only","produces goods for sale","seeks knowledge while technology applies it","uses only computers",2],
+["Living and non-living things","Which of these is a characteristic of living things?","they can fly","they respire","they are always hard","they are transparent",1],
+["Living and non-living things","The process by which living things break down food to release energy is called","excretion","reproduction","irritability","respiration",3],
+["Living and non-living things","Which of these is a non-living thing?","stone","mango","rat","fish",0],
+["Living and non-living things","Growing taller and bigger from a baby to an adult shows","sensitivity","excretion","growth","reproduction",2],
+["Living and non-living things","Removing waste products such as sweat and urea from the body is called","nutrition","excretion","respiration","movement",1],
+["Living and non-living things","Which of the following is living?","table","chair","stone","goat",3],
+["Living and non-living things","The ability of living things to respond to changes in their surroundings is called","sensitivity","growth","reproduction","movement",0],
+["Living and non-living things","Fire is regarded as non-living because it","can grow","breathes air","does not carry out all life processes","reproduces young ones",2],
+["Living and non-living things (2)","Organisms that make their own food are called","producers","consumers","decomposers","predators",0],
+["Living and non-living things (2)","An animal that eats only plants is a","carnivore","omnivore","herbivore","scavenger",2],
+["Living and non-living things (2)","A dog that eats both plant and animal food is an","herbivore","carnivore","producer","omnivore",3],
+["Living and non-living things (2)","Bacteria and fungi that break down dead matter are called","producers","decomposers","herbivores","carnivores",1],
+["Living and non-living things (2)","The natural home of an organism is its","habitat","adaptation","population","community",0],
+["Living and non-living things (2)","Which of these is an example of adaptation in a fish?","growing feathers","burrowing in soil","shedding leaves","having fins for swimming",3],
+["Living and non-living things (2)","In the food chain grass to goat to lion, the goat acts as","producer","consumer","decomposer","predator",1],
+["Living and non-living things (2)","Which of these is a carnivore?","cow","rabbit","hawk","goat",2],
+["Human Development","The stage of human development that comes immediately after infancy is","old age","adulthood","adolescence","childhood",3],
+["Human Development","The period between childhood and adulthood is called","adolescence","infancy","babyhood","retirement",0],
+["Human Development","Puberty is the stage when the body becomes ready for","primary school","reproduction","retirement","driving a car",1],
+["Human Development","The teeth that a child loses before the permanent ones grow are also called","wisdom teeth","deciduous teeth","canines","premolars",1],
+["Human Development","A balanced diet is important to a growing child because it","supplies all nutrients in the right amounts","makes food taste sweet","keeps the child always hungry","helps the child to sleep all day",0],
+["Human Development","Which of these is a sign of good personal hygiene?","brushing the teeth once a month","bathing only on Sundays","wearing dirty uniforms","cutting the nails regularly",3],
+["Human Development","During old age, a person is likely to have","very strong muscles always","weak bones and wrinkled skin","new teeth growing","rapid increase in height",1],
+["Human Development","The first stage of human development is","adolescence","adulthood","infancy","old age",2],
+["Human Development","Personal hygiene during adolescence is important because it","makes the skin dark","increases appetite only","prevents the body from growing","protects against infections and body odour",3],
+["Family Health","Family health means","cooking food for the whole family","keeping the whole family free from disease","building a big house for the family","sending all children to school",1],
+["Family Health","Water that is safe for drinking is called","soft water","hard water","potable water","rain water",2],
+["Family Health","Giving children available vaccines to protect them from diseases is called","immunisation","nutrition","sanitation","purification",1],
+["Family Health","The best way to prevent mosquitoes from breeding is to","keep window curtains closed","eat more fruits","drink plenty of water","drain all stagnant water around the home",3],
+["Family Health","Cholera is commonly spread through","contaminated water and food","the bite of a mosquito","shaking hands with an infected person","breathing air in a bus",0],
+["Family Health","Typhoid fever is caused by","a mosquito bite","too much exercise","germs in contaminated food and water","staying in the hot sun",2],
+["Family Health","Which of these is a good environmental sanitation practice?","throwing rubbish into the drainage","regular collection of refuse","urinating by the roadside","burning tyres in the street",1],
+["Family Health","Regular medical check-ups help a family to","win sports competitions","grow taller quickly","save money in the bank","detect health problems early",3],
+["Family Health","Which of these practices keeps the home healthy?","keeping food covered and the kitchen clean","drinking from stagnant pools","sleeping in an unventilated room","allowing refuse to pile up",0],
+["Family Health (2)","Which class of food gives the body the most energy?","vitamins","carbohydrates","minerals","proteins",1],
+["Family Health (2)","The vitamin that prevents scurvy is vitamin","A","D","K","C",3],
+["Family Health (2)","Night blindness is caused by a deficiency of","vitamin A","vitamin C","vitamin D","protein",0],
+["Family Health (2)","Rickets in children is caused by a lack of","vitamin A","carbohydrates","vitamin D","fats",2],
+["Family Health (2)","A child with kwashiorkor lacks enough","carbohydrates","protein","fibre","water",1],
+["Family Health (2)","Which of these is a method of preserving food?","leaving food in the open","placing food on the floor","mixing food with sand","drying food in the sun",3],
+["Family Health (2)","Body-building foods are also called","proteins","carbohydrates","fats","vitamins",0],
+["Family Health (2)","A person who eats only one kind of food daily may suffer from","obesity only","good growth","malnutrition","increased energy",2]
+]);
+
+defBank("JSS2|Basic Science", [
+["Revision/Welcome Test","The three states of matter are","solid, liquid and gas","heat, light and sound","mass, weight and volume","atom, molecule and element",0],
+["Revision/Welcome Test","Which of these is a part of a plant?","kidney","leaf","stomach","lung",1],
+["Revision/Welcome Test","Science is the","memorising of facts","systematic study of nature","art of drawing maps","writing of essays",2],
+["Revision/Welcome Test","Which of these is a living thing?","stone","table","chair","snail",3],
+["Revision/Welcome Test","Washing hands before eating is a","healthy habit","bad manners","waste of water","sign of laziness",0],
+["Revision/Welcome Test","How many centimetres are there in 1 metre?","10","50","100","1000",2],
+["Revision/Welcome Test","Which of these is an energy-giving food?","beans","rice","orange","carrot",1],
+["Revision/Welcome Test","To keep clean, a student should","share towels with friends","bathe once a week","eat before brushing","brush the teeth twice daily",3],
+["Skeletal and muscular system","The adult human body has how many bones?","156","206","300","100",1],
+["Skeletal and muscular system","The skeleton serves as the","framework of the body","source of food","organ of sight","centre of hearing",0],
+["Skeletal and muscular system","The part of the skeleton that protects the brain is the","rib cage","pelvis","skull","spine",2],
+["Skeletal and muscular system","The ribs protect the","liver and kidneys only","brain and skull","leg muscles","heart and lungs",3],
+["Skeletal and muscular system","Another name for the thigh bone is the","femur","tibia","radius","ulna",0],
+["Skeletal and muscular system","Where two or more bones meet is called a","ligament","muscle","joint","tendon",2],
+["Skeletal and muscular system","Cartilage is important at a joint because it","pumps blood","carries food","fights germs","reduces friction between bones",3],
+["Skeletal and muscular system","Muscles attached to bones that work only when we will them are called","involuntary muscles","skeletal muscles","smooth muscles","cardiac muscles",1],
+["Skeletal and muscular system","The heart muscle works without our control, so it is","voluntary","skeletal","under the will","involuntary",3],
+["Respiratory system","The windpipe is also called the","trachea","oesophagus","bronchus","pharynx",0],
+["Respiratory system","Gaseous exchange in the lungs takes place in the","trachea","alveoli","larynx","nostrils",1],
+["Respiratory system","During inhalation, the body takes in","carbon dioxide","nitrogen","oxygen","water vapour",2],
+["Respiratory system","The gas given out during exhalation is","oxygen","nitrogen","hydrogen","carbon dioxide",3],
+["Respiratory system","Tiny holes on the underside of leaves through which gases pass are called","stomata","xylem","roots","petals",0],
+["Respiratory system","Smoking is harmful to the lungs because tar","cleans the airways","blocks the air passages","adds oxygen to the blood","makes breathing stronger",1],
+["Respiratory system","During breathing out, the diaphragm","contracts and flattens","stays the same shape","relaxes and moves upward","disappears completely",2],
+["Respiratory system","Which of these muscles take part in breathing?","biceps only","facial muscles","leg muscles","intercostal muscles",3],
+["Circulatory system","The organ that pumps blood around the body is the","lung","heart","kidney","liver",1],
+["Circulatory system","Blood vessels that carry blood away from the heart are the","veins","capillaries","venules","arteries",3],
+["Circulatory system","Blood vessels that carry blood towards the heart are called","veins","arteries","capillaries","nerves",0],
+["Circulatory system","The smallest blood vessels in the body are the","arteries","veins","capillaries","aorta",2],
+["Circulatory system","Which blood component fights infection in the body?","red blood cells","white blood cells","platelets","plasma",1],
+["Circulatory system","The fluid part of blood is called","haemoglobin","platelets","corpuscles","plasma",3],
+["Circulatory system","The substance in red blood cells that carries oxygen is","haemoglobin","fibrin","enzymes","glucose",0],
+["Circulatory system","Blood pressure is measured with a","thermometer","barometer","sphygmomanometer","hygrometer",2],
+["Compounds and mixture","A pure substance that cannot be broken down chemically is called an","element","compound","mixture","solution",0],
+["Compounds and mixture","Water is made of hydrogen and oxygen, so water is a","mixture","compound","alloy","suspension",1],
+["Compounds and mixture","Which of these is a mixture?","pure water","salt","air","carbon dioxide",2],
+["Compounds and mixture","The components of a mixture can be separated by","chemical reactions only","adding acid to it","burning it","physical methods",3],
+["Compounds and mixture","A mixture of salt in water that looks the same throughout is a","homogeneous solution","heterogeneous mixture","suspension","precipitate",0],
+["Compounds and mixture","Sand can be separated from water by","evaporation","filtration","magnetic separation","chromatography",1],
+["Compounds and mixture","Iron filings can be separated from sulphur using a","funnel","sieve","magnet","distillation flask",2],
+["Compounds and mixture","Which technique gives pure water from salt water?","sieving","magnetic separation","evaporation","distillation",3],
+["Compounds and mixture","Table salt dissolved in water can be recovered by","evaporation","filtration","the use of a magnet","decantation",0],
+["Measurements","The SI unit of length is the","kilogram","metre","litre","second",1],
+["Measurements","Mass is measured in","metres","litres","centimetres","kilograms",3],
+["Measurements","The instrument used to measure temperature is a","thermometer","barometer","beam balance","measuring cylinder",0],
+["Measurements","The instrument used to measure mass in the laboratory is a","thermometer","ruler","beam balance","stopwatch",2],
+["Measurements","How many grams are there in 1 kilogram?","10","1000","500","100",1],
+["Measurements","How many millilitres are there in 1 litre?","100","10","500","1000",3],
+["Measurements","The volume of a regular block is calculated using","length x breadth x height","length + breadth + height","length divided by breadth","breadth x height only",0],
+["Measurements","1 metre is equal to how many centimetres?","10","50","100","1000",2]
+]);
+
+defBank("JSS1|Agriculture", [
+["Meaning, Importance and History of Agriculture","Agriculture may be defined as the science and art of","cultivating crops and rearing animals for man's use","hunting wild animals in the forest for fun","selling farm produce in the market only","clearing land only for building houses",0],
+["Meaning, Importance and History of Agriculture","Farming is believed to have started about how many years ago?","100 years ago","1,000 years ago","10,000 years ago","1,000,000 years ago",2],
+["Meaning, Importance and History of Agriculture","Before the discovery of farming, early man","lived only on fish from the sea","was a hunter and a gatherer","lived in cities and towns","kept large herds of cattle",1],
+["Meaning, Importance and History of Agriculture","Which of the following is an importance of agriculture to man?","It makes people lazy","It causes soil erosion only","It reduces employment opportunities","It provides food and raw materials for industries",3],
+["Meaning, Importance and History of Agriculture","Agriculture supplies industries with raw materials such as","cotton and cocoa","steel and cement","petrol and kerosene","tiles and bricks",0],
+["Meaning, Importance and History of Agriculture","Which period in history is associated with the beginning of farming?","Iron Age","New Stone Age","Modern Space Age","First World War period",1],
+["Meaning, Importance and History of Agriculture","One way a country earns foreign exchange from agriculture is by","importing food from other countries","cutting down all the forests","exporting cash crops like cocoa and palm oil","leaving farm produce to waste in the field",2],
+["Meaning, Importance and History of Agriculture","The body gets nutrients from agriculture through","farm tools and implements","food crops and animal products","roads and bridges","schools and hospitals",1],
+["Meaning, Importance, Branches and scope of Agriculture","Which of these is a branch of agriculture?","Crop production","Rocket science","Road construction","Radio broadcasting",0],
+["Meaning, Importance, Branches and scope of Agriculture","The growing of trees for timber and other useful products is known as","horticulture","agroforestry","pisciculture","sericulture",1],
+["Meaning, Importance, Branches and scope of Agriculture","Which branch of agriculture deals with the rearing of fish?","apiculture","arboriculture","floriculture","pisciculture",3],
+["Meaning, Importance, Branches and scope of Agriculture","Which of the following is NOT part of the scope of agriculture?","Processing of farm produce","Marketing and distribution of farm produce","Building of cinema houses","Storage of farm produce",2],
+["Meaning, Importance, Branches and scope of Agriculture","The buying, processing and selling of farm inputs and produce is called","soil science","agribusiness","agricultural engineering","road construction",1],
+["Meaning, Importance, Branches and scope of Agriculture","The branch of agriculture that deals with the study of soil is","agricultural extension","animal science","soil science","farm management",2],
+["Meaning, Importance, Branches and scope of Agriculture","Agroforestry is the practice of","fishing in deep seas only","rearing bees for honey only","growing crops and rearing animals only","combining trees with crops and livestock on the same land",3],
+["Meaning, Importance, Branches and scope of Agriculture","Farm produce such as cotton, cocoa and rubber are useful to industries because they serve as","raw materials","finished goods","building roads","farm tools",0],
+["Meaning, Importance, Branches and scope of Agriculture","Agricultural extension means","expanding farm land into the forest only","teaching farmers improved methods of farming","exporting food to other countries","cutting down old crops",1],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","Horticulture is the science and art of","growing fruits, vegetables and ornamental plants","rearing cattle for meat and milk","catching fish in rivers and lakes","planting only cereal crops in the field",0],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","The branch of horticulture that deals with the growing of vegetables is called","pomology","floriculture","olericulture","arboriculture",2],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","The growing of flowers for sale is known as","pomology","floriculture","heliculture","pisciculture",1],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","Silk used in the textile industry is obtained from","bees","silkworms","catfish","cows",1],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","Heliculture means the rearing of","bees for honey","snails for food","rabbits for meat","silkworms for the production of silk",3],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","Pomology is the branch of horticulture concerned with","fruit production","vegetable production","flower production","timber production",0],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","Market gardening is the growing of","cereals only for storage in barns","timber trees for export only","vegetables, fruits and flowers for sale near towns and cities","grass only for roofing houses",2],
+["Forms of Agriculture - Agriculture, Horticulture, Heliculture","The growing of shade and ornamental trees is called","apiculture","aquaculture","heliculture","arboriculture",3],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Which of these is NOT a livestock farm animal?","Goat","Sheep","Maize","Pig",2],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Livestock farming involves","rearing of farm animals such as cattle, poultry and goats","growing of rice only","fishing in the sea","processing of cocoa beans",0],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Crop farming may be divided into","poultry farming and fish farming","horticulture and heliculture","marketing and storage of produce","arable farming and tree crop farming",3],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Capture fisheries means","breeding fish in concrete tanks","catching wild fish from rivers, lakes and the sea","processing fish into powder","selling fish in the market",1],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","The rearing of bees for the production of honey is called","sericulture","pisciculture","apiculture","olericulture",2],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Mixed farming is the practice of","growing crops only","rearing animals only","selling farm produce only","growing crops and rearing animals on the same farm",3],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","A farmer who produces just enough food for his family practices","commercial farming","subsistence farming","industrial farming","export farming",1],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Pasturage refers to","a place where fish are processed","a market for selling farm tools","natural or planted grasses and forage on which livestock feed","land used only for building farm houses",2],
+["Forms of Agriculture - Livestock, Crop Farming, Fishery","Pisciculture simply means","the rearing of fish","the rearing of birds","the growing of yams","the processing of milk",0],
+["Crop Plant Forms - Different parts of plants, Functions of each part","Which part of the plant anchors it firmly in the soil and absorbs water and minerals?","Root","Leaf","Flower","Fruit",0],
+["Crop Plant Forms - Different parts of plants, Functions of each part","The main function of the leaf in a crop plant is to","absorb water from the soil","manufacture food through the process of photosynthesis","protect the seed from damage","store farm produce for sale",1],
+["Crop Plant Forms - Different parts of plants, Functions of each part","The part of the leaf through which gases enter and leave is the","petiole","tendril","bark","stomata",3],
+["Crop Plant Forms - Different parts of plants, Functions of each part","The roots of a maize plant spread out like fibres. Such roots are called","fibrous roots","tap roots","aerial roots","nodulated roots",0],
+["Crop Plant Forms - Different parts of plants, Functions of each part","The flower of a crop plant is important because it is the","part that stores water only","part eaten by termites only","reproductive part of the plant","part that absorbs minerals from the air",2],
+["Crop Plant Forms - Different parts of plants, Functions of each part","The main function of the fruit of a crop plant is to","absorb minerals from the soil","manufacture food for the soil","protect the seed until it is mature","hold the plant upright against strong wind",2],
+["Crop Plant Forms - Different parts of plants, Functions of each part","Which of these is a function of the stem of a crop plant?","production of fruits only","absorption of carbon dioxide only","formation of seeds in the soil","transportation and storage of food and nutrients",3],
+["Crop Plant Forms - Different parts of plants, Functions of each part","Which of these is a function of the root of a cassava plant?","anchoring the plant and absorbing water and minerals","making food from sunlight","producing flowers for bees","dropping seeds into the river",0],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Which of these is an aquatic plant?","Water spinach","Maize","Cassava","Yam",0],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Plants that grow on land are called","hydrophytes","mesophytes","terrestrial plants","aquatic plants",2],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Water lily and duckweed are examples of plants found in","dry sandy soil","water bodies","rocky mountains","desert land",1],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Which adaptation helps many aquatic plants to float on water?","thick hard bark","deep strong tap roots","very small leaves with no stomata","broad flat leaves and air spaces in the tissues",3],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Mesophytes are plants that","grow in water only","grow well on land with moderate moisture","grow only in deserts with no water","cannot make food at all",1],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Compared with terrestrial plants, many aquatic plants usually have","well developed woody stems","very thick waxy cuticles on all leaves","strong deep tap roots for firm anchorage","poorly developed or weak roots",3],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Algae are important in water bodies mainly because they","grow only on dry land","manufacture food in water and serve as food for some aquatic animals","are used mainly in building houses","produce milk for young calves",1],
+["Crop Plant Forms - Aquatic Plants, Terrestrial Plants","Which of these plants is terrestrial?","duckweed","water lily","algae","maize",3]
+]);
+
+defBank("JSS2|Agriculture", [
+["Revision/Welcome Test","Agriculture is best defined as the","science and art of cultivating crops and rearing animals for man's use","practice of hunting wild animals in the forest","art of buying and selling goods in the market","science of building houses and roads",0],
+["Revision/Welcome Test","Which of these is NOT a branch of agriculture?","Crop production","Animal production","Fishery","Plumbing",3],
+["Revision/Welcome Test","The branch of horticulture that deals with the growing of vegetables is called","pomology","olericulture","floriculture","arboriculture",1],
+["Revision/Welcome Test","Which part of a crop plant absorbs water and minerals from the soil?","Leaf","Flower","Root","Fruit",2],
+["Revision/Welcome Test","Plants that grow in water are called","mesophytes","hydrophytes","xerophytes","terrestrial plants",1],
+["Revision/Welcome Test","Which of these is a livestock animal kept for meat and milk?","Cattle","Lion","Eagle","Crocodile",0],
+["Revision/Welcome Test","One importance of agriculture to man is that it","reduces the supply of food","causes more unemployment","destroys all good farmland","provides raw materials for industries",3],
+["Revision/Welcome Test","Silk used in the textile industry is obtained from rearing","bees","catfish","silkworms","snails",2],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","A structure used for keeping harvested crops such as maize and yam is called a","milking parlour","Barn","kraal","fish pond",1],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","A silo is mainly used for","milking of dairy cows","hatching of chicks","storing grains and forage in airtight conditions","grazing of cattle",2],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","Which farm structure is used for rearing chickens?","Poultry house","Kraal","Barn","Threshing floor",0],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","A kraal is a structure used to","process fish on the farm","store fertiliser and chemicals","serve as a milking parlour","shelter livestock such as cattle, sheep and goats",3],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","A milking parlour on a dairy farm is used for","milking cows","slaughtering of animals","feeding of fish","hatching of eggs",0],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","Farm tools and implements are kept in the","milking parlour","barn","equipment shed","kraal",2],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","A threshing floor is used for","separating grains from the chaff during threshing","rearing of piglets","milking of cows","hatching of fish eggs",0],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","Farm layout can be defined as the","price at which farm produce is sold","colour of the farm buildings","number of workers on the farm","arrangement of farm features on the land",3],
+["Farm structure and layout of farm building (Types, Uses of farm structures)","The main purpose of farm structures is to","provide shelter for livestock and store produce","transport produce to the market","make the soil more fertile","increase the rainfall in the area",1],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Painting farm structures mainly protects them from","rust and weather damage","lightning strikes","earthquake damage","flood water only",0],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Greasing and oiling of farm machinery is done mainly to","increase the weight of the machine","reduce friction between moving parts","make the machine change colour","increase the size of the machine",1],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Repairing a leaking roof on a produce store is necessary to","make the store look taller","allow more sunlight into the store","prevent rain from damaging stored produce","attract more buyers to the store",2],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Fumigation of a farm store is done mainly to","make the store beautiful","increase the ventilation of the store","make the walls of the store strong","kill pests and insects in stored produce",3],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Termites are dangerous to farm structures because they","increase the fertility of the soil","damage the wooden parts of the building","make the roof shine","attract more fish to the pond",1],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","One factor that guides the siting of farm buildings is","the colour of the sky","the shape of the leaves","the availability of clean water","the number of windows in the house",2],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Farm buildings should be sited near the market mainly to","increase the size of the farm","make the soil more fertile","attract more wild animals","reduce the cost of transporting produce",3],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Related farm buildings should be close to one another in the layout so as to","make work easier and reduce time wasted in movement","increase the spread of farm diseases","make drainage on the farm poor","allow termites to enter the buildings",0],
+["Farm structure and layout (Methods of maintaining farm structures, factors guiding siting and layout)","Space should be left on the farm layout mainly to allow for","the growth of more weeds","future expansion of the farm","the blocking of drainage channels","an increase in termite attack",1],
+["Fishery","Fishery may be defined as","all activities concerned with catching, processing and marketing fish","the growing of cassava and maize only","the rearing of poultry birds only","the building of boats on dry land",0],
+["Fishery","The two main branches of fishery are","crop farming and animal farming","capture fisheries and aquaculture","horticulture and heliculture","agroforestry and apiculture",1],
+["Fishery","Fish is important to man mainly because it","is used in building houses","is used for making furniture","is a cheap source of animal protein","makes the soil more fertile",2],
+["Fishery","Fish found in rivers, lakes and ponds live in","marine habitats","desert habitats","forest habitats","freshwater habitats",3],
+["Fishery","A gill net is a fishing gear used to","entangle fish by their gills as they swim","grind fish into powder","smoke fish for preservation","transport fish to the market",0],
+["Fishery","The fishing method that uses a baited hook tied to a line is called","trawling","angling","bunding","liming",1],
+["Fishery","A cast net is thrown into the water to","store fish for sale","process fish for the market","catch fish near the surface","keep the pond clean",2],
+["Fishery","Trawling is a fishing method in which a","basket is used to trap fish","hook is baited with worms","spear is used to catch fish","large net is dragged behind a boat",3],
+["Fishery (cont.)","The process by which fish lay their eggs in water is called","spawning","liming","bunding","trawling",0],
+["Fishery (cont.)","Young fish that have just hatched from the eggs are called","calves","fry","ducklings","chicks",1],
+["Fishery (cont.)","A fingerling is","an adult fish ready for the market","a type of fishing net","a young fish that has grown beyond the fry stage","a machine for processing fish",2],
+["Fishery (cont.)","Overfishing means","feeding fish with balanced ration","rearing fish in a concrete pond","selling fish at a high price","catching fish faster than they can reproduce",3],
+["Fishery (cont.)","One danger of overfishing is that it","increases the amount of oxygen in the water","makes fish grow very fast","reduces the fish stock in the water bodies","improves the quality of the water",2],
+["Fishery (cont.)","Dumping refuse and chemicals into a river leads to","more rainfall in the area","water pollution that kills fish","faster growth of the fish","cleaner water for fishing",1],
+["Fishery (cont.)","Which of these is NOT a method of preserving fish?","Smoking","Drying","Salting","Grazing",3],
+["Fishery (cont.)","Using poison and explosives to catch fish is dangerous because it","destroys fish stocks and pollutes the water","saves the lives of young fish","makes the fish taste better","makes fishing cheaper",0],
+["Establishment of a fish pond","The best soil for holding water in an earthen fish pond is","clay soil","sandy soil","gravelly soil","rocky soil",0],
+["Establishment of a fish pond","The first step in establishing a fish pond is","stocking the pond with fingerlings","clearing the selected site","feeding the fish","harvesting the fish",1],
+["Establishment of a fish pond","The inlet and outlet of a fish pond are provided to","attract wild birds to the pond","store fish feed for later use","supply fresh water and drain out water","increase the growth of weeds",2],
+["Establishment of a fish pond","Bunding in fish pond construction means building","a road around the farm","a house for the fisherman","a fence for the poultry","embankments around the pond to hold water",3],
+["Establishment of a fish pond","Stocking a fish pond means","introducing fingerlings into the pond","draining out all the water","removing the weeds from the pond","painting the walls of the pond",0],
+["Establishment of a fish pond","Liming of a fish pond is mainly done to","feed the fish quickly and cheaply","correct the acidity of the pond and kill harmful organisms","increase the size of the pond","attract more sunlight to the pond",1],
+["Establishment of a fish pond","Which of these is NOT a type of fish pond?","Earthen pond","Concrete pond","Tarpaulin pond","Barn",3],
+["Establishment of a fish pond","Weeds in a fish pond should be controlled because they","make the water clearer for fishing","help the fish to grow faster","reduce oxygen in the water and hinder fish movement","attract more fingerlings to the pond",2]
+]);
+
+defBank("JSS3|Agriculture", [
+["Revision/Welcome Test","Agriculture is best described as the art and science of","growing cassava only","selling goods in a city market","building houses for farmers","producing crops, livestock and processing farm produce",3],
+["Revision/Welcome Test","Which of these is NOT a branch of agriculture?","Crop production","Animal production","Banking","Fishery",2],
+["Revision/Welcome Test","Horticulture is the branch of agriculture that deals with the cultivation of","timber trees only","vegetables, flowers and ornamental plants","cattle and poultry","oil palm only",1],
+["Revision/Welcome Test","Heliculture is the rearing of","honey bees","catfish","poultry birds","snails",3],
+["Revision/Welcome Test","Which of these is a farm structure?","Tractor","Cutlass","Store","Rake",2],
+["Revision/Welcome Test","Windbreaks on a farm are mainly planted to","sell firewood","protect crops and animals from strong winds","store the harvest","attract buyers",1],
+["Revision/Welcome Test","Fishery in agriculture is concerned with","catching and rearing aquatic animals","growing rice","keeping snails","producing vegetable oil",0],
+["Revision/Welcome Test","The first step in establishing a fish pond is to","feed the fish","select and prepare a suitable site","harvest the fish","buy fishing nets",1],
+["Revision/Welcome Test","Which of these crop plant parts usually grows below the ground?","Flower","Leaf","Fruit","Root",3],
+["Revision/Welcome Test","An aquatic plant is one that grows","on dry land only","in desert sand","in water or very wet soil","on mountain rocks",2],
+["Packaging in agriculture","Packaging of agricultural products means","labelling only","advertising on radio","wrapping and enclosing products for protection and sale","cutting produce into sizes",2],
+["Packaging in agriculture","Which of these is a purpose of packaging farm produce?","To protect produce from damage and pests","To increase weeds on the farm","To reduce the size of the farm","To make crops grow taller",0],
+["Packaging in agriculture","Good packaging helps to preserve the quality of produce mainly by","increasing the weight of produce","changing the colour of produce","making produce smell better","reducing spoilage from air, water and germs",3],
+["Packaging in agriculture","Which packaging material is most suitable for transporting live catfish?","Paper bag","Glass jar","Plastic container with water","Cardboard sheet",2],
+["Packaging in agriculture","Cartons and crates are mainly used to package","liquid palm oil in bulk","fragile and perishable items such as tomatoes and eggs","fertiliser in heavy bags","firewood",1],
+["Packaging in agriculture","Labels on packaged products are important because they","add weight to the goods","increase transport cost","make packages waterproof only","give buyers information such as weight, date and producer",3],
+["Packaging in agriculture","One disadvantage of poor packaging is","heavy losses from spoilage and breakage","easy handling of produce","longer shelf life","better attraction of buyers",0],
+["Packaging in agriculture","The choice of packaging material for yam is mainly determined by","the colour of the farmer's house","the name of the market","the distance of transport and the purpose of storage","the day of harvest only",2],
+["Packaging in agriculture","Which of these packaging materials is least environmentally friendly when carelessly disposed?","Woven sack","Polythene bag","Wooden crate","Cardboard carton",1],
+["Packaging in agriculture","One advantage of packaging palm oil in bottles is that it","prevents spilling and attracts buyers","makes the oil thicker","increases the quantity of oil produced","removes the need for labels",0],
+["Branding","Branding of agricultural products means","weighing produce before sale","wrapping produce in nylon","giving a product a name, symbol or design to distinguish it from others","transporting produce to the market",2],
+["Branding","A dealer or retailer brand is also known as a","producer brand","government brand","private brand","cooperative brand",2],
+["Branding","Which of these is an element of a brand?","Logo","Farm size","Soil type","Rainfall amount",0],
+["Branding","A brand slogan is","the registration number of a product","a short phrase used to promote a product","the weight of packaged goods","the address of the producer",1],
+["Branding","One importance of branding to a farmer is that it","increases the weeds on the farm","reduces the quality of produce","makes competition impossible","assures buyers of consistent quality and builds customer loyalty",3],
+["Branding","The main difference between branding and packaging is that branding","protects produce from damage","identifies the product while packaging protects it","is done only by the government","uses only cartons and sacks",1],
+["Branding","A trademark is best described as","a legal sign or symbol that identifies and protects a brand","a type of packaging material","a list of farm produce prices","the name of a market association",0],
+["Branding","A buyer can identify a branded product quickly by the","size of the farm","weather at harvest","number of workers on the farm","logo and brand name on the package",3],
+["Branding","To enjoy legal protection in Nigeria, a company should","register its trademark with the appropriate agency","hide the brand name from buyers","change the brand name every week","pack the product without a label",0],
+["Branding","An example of a producer brand is","a supermarket selling goods under its own name","a retailer printing its own name on rice bags","Nestle selling products under the Nestle name","a market woman renaming imported milk",2],
+["Pricing","Pricing of farm produce means","the amount of money the produce is sold for","the weight of the produce","the number of bags harvested","the distance from farm to market",0],
+["Pricing","Which of these is a factor that affects the price of cassava?","The colour of the farmer's clothes","The name of the farm gate","The type of hoe used","Government taxation",3],
+["Pricing","When the supply of tomatoes is low and the demand is high, the price will most likely","fall to zero","rise","remain the same forever","disappear",1],
+["Pricing","Which of these government actions can affect the price of farm produce?","Taxation and import or export rules","The farmer's favourite crop","The size of the farmhouse","The colour of the market building",0],
+["Pricing","In competitive pricing, the farmer sets a price by","adding double profit always","ignoring other sellers completely","matching the price close to what other sellers charge for similar produce","selling at any price a buyer offers",2],
+["Pricing","Penetration pricing means setting a","very high price to confuse competitors","low price to enter a market and attract many buyers","price that never changes","price based only on transport cost",1],
+["Pricing","Correct pricing is important to the farmer because it","guarantees free transportation of produce","removes the need for buyers","increases the amount of rainfall","helps to cover costs, make profit and sell quickly",3],
+["Pricing","A farmer who over-prices his maize will most likely","record very fast sales","record low sales as buyers turn to cheaper alternatives","get free advertisement","increase demand automatically",1],
+["Pricing","Middlemen affect the price of farm produce mainly by","reducing the price to zero","giving free packaging materials","adding their own charges as produce passes from farmer to consumer","planting more crops for the farmer",2],
+["Pricing","The price of oranges usually","falls when oranges are abundant in season","rises when supply is highest","never changes with seasons","depends on the colour of the fruit",0],
+["Advertisement and Types of advertisement","Advertisement means","drawing public attention to a product for sale","reducing the price of goods","harvesting crops early","storing produce in a barn",0],
+["Advertisement and Types of advertisement","One importance of advertising farm produce is that it","reduces the quality of the product","removes the need for pricing","replaces the need for packaging","informs customers and can increase sales",3],
+["Advertisement and Types of advertisement","Which advertising medium is best for reaching a large rural audience that may not read newspapers?","National newspaper","Radio","International magazine","Direct mail letter",1],
+["Advertisement and Types of advertisement","A billboard by the roadside is an example of","outdoor advertising","direct advertising","personal selling","print advertising",0],
+["Advertisement and Types of advertisement","Advertising farm produce on Facebook, Instagram or WhatsApp is classified as","print advertising","broadcast advertising","online or digital advertising","outdoor advertising",2],
+["Advertisement and Types of advertisement","One disadvantage of television advertisement is that","it reaches only one person","it can be very expensive for a small farmer","it uses no sound","it cannot show pictures",1],
+["Advertisement and Types of advertisement","Personal selling as an advertising tool involves","a salesperson explaining and persuading a buyer directly","printing handbills without speaking to anyone","using the internet only","writing prices on a chalkboard only",0],
+["Advertisement and Types of advertisement","Sales promotion mainly offers","permanent free products to buyers forever","only billboards to customers","no benefit to buyers","temporary benefits such as discounts, free gifts or price reductions for a short period",3],
+["Advertisement and Types of advertisement","Which method is cheapest and fastest for a local market seller to announce today's prices?","National television","International magazine","Highway billboard","Market announcement by loudspeaker or word of mouth",3],
+["Advertisement and Types of advertisement","The main advantage of internet advertisement for a farmer is that","it is visible only in one town","it requires a large radio station","it can reach many buyers at low cost and allow quick feedback","it works only during harvest",2]
+]);
+
+defBank("JSS1|Computer", [
+["Basic Computer Concepts","A computer is an electronic machine that","accepts data, processes it and gives out information","cooks food for people","only stores data without processing","works only when connected to a generator",0],
+["Basic Computer Concepts","Which of these is a characteristic of a computer?","Weakness","Speed","Tiredness","Hunger",1],
+["Basic Computer Concepts","Which component of a computer accepts data for processing?","Output unit","Storage unit","Input unit","Power unit",2],
+["Basic Computer Concepts","Which of these is an output device?","Keyboard","Scanner","Mouse","Printer",3],
+["Basic Computer Concepts","The main difference between data and information is that","information is raw and data is processed","data is raw while information is processed and meaningful","both mean the same thing","data is only found in computers",1],
+["Basic Computer Concepts","Which of these is a use of computers at home?","Keeping family records and paying bills","Performing surgery only","Printing school results only","Driving vehicles only",0],
+["Basic Computer Concepts","In a bank, computers are mainly used to","grow crops","cure patients","keep records of customers and carry out transactions","teach farming",2],
+["Basic Computer Concepts","ICT stands for","Input Control Terminal","Internet and Computer Teaching","International College of Technology","Information and Communication Technology",3],
+["Technology of different Information Ages","The age in which tools were made mainly of stone is the","Bronze Age","Stone Age","Iron Age","Information Age",1],
+["Technology of different Information Ages","Which age used tools made mainly of bronze?","Stone Age","Iron Age","Bronze Age","Electronic Age",2],
+["Technology of different Information Ages","Iron tools such as hoes and cutlasses were characteristics of the","Iron Age","Stone Age","Bronze Age","Mechanical Age",0],
+["Technology of different Information Ages","The mechanical age is associated with the use of","computers and the internet","telephones only","televisions only","machines powered by human or animal force",3],
+["Technology of different Information Ages","During the industrial age, machines were used mainly for","manual farming only","mass production in factories","sending letters by hand","counting with pebbles",1],
+["Technology of different Information Ages","The electronic age is marked by the use of","electronic devices such as radios and televisions","stone tools","animal horns","clay pots only",0],
+["Technology of different Information Ages","The information age is driven mainly by","steam engines only","hand tools only","computers and telecommunication","animal traction only",2],
+["Technology of different Information Ages","Which of these is the earliest means of sending messages among those listed?","Email","Television","Telephone","Drums and messengers",3],
+["Technology of different Information Ages","Which of these best describes how communication has changed over time?","It has remained the same since the stone age","It has changed from drums and messengers to telephone, radio, television, computers and the internet","It now uses only drums","It depends only on written letters",1],
+["Historical development of computers","The earliest counting device used by man was the","abacus","Napier's bones","fingers","Pascaline",2],
+["Historical development of computers","The abacus is an early counting device used mainly for","counting and doing simple arithmetic","sending emails","playing music","storing photographs",0],
+["Historical development of computers","Napier's bones was invented by","Blaise Pascal","Charles Babbage","Ada Lovelace","John Napier",3],
+["Historical development of computers","The Pascaline calculating machine was invented by","Herman Hollerith","Blaise Pascal","John Napier","Ada Lovelace",1],
+["Historical development of computers","Charles Babbage is regarded as the father of the computer because he designed the","Difference Engine and Analytical Engine","abacus","telephone","radio receiver",0],
+["Historical development of computers","Ada Lovelace is remembered for her work on","inventing the abacus","designing the telephone","writing early programs for Babbage's machine","inventing the television",2],
+["Historical development of computers","Herman Hollerith is known for the","invention of the internet","design of the television","invention of the telephone","tabulating machine that used punch cards",3],
+["Historical development of computers","The change from mechanical to electronic computers led to machines that were","slower and larger","faster and more reliable","unable to store data","used only for counting pebbles",1],
+["Generations of computers","First generation computers used which main component?","Vacuum tubes","Transistors","Integrated circuits","Microprocessors",0],
+["Generations of computers","Second generation computers used","vacuum tubes","stone tools","transistors","microprocessors",2],
+["Generations of computers","Third generation computers used","vacuum tubes","integrated circuits","gears only","punch cards only",1],
+["Generations of computers","Fourth generation computers are associated with the","use of stones","use of transistors only","use of vacuum tubes","microprocessor and personal computers",3],
+["Generations of computers","Fifth generation computers are associated with","steam engines","artificial intelligence and expert systems","hand counting","animal-powered machines",1],
+["Generations of computers","Which of these changed greatly from one computer generation to another?","Size, speed and the components used","The name of the inventor only","The colour of the screen only","Nothing changed at all",0],
+["Generations of computers","ENIAC and UNIVAC are examples of","modern mobile phones","fourth generation personal computers","early computers","internet browsers",2],
+["Generations of computers","Punch cards were mainly used in early computers as a means of","connecting to the internet","storing photographs","playing video","inputting data and instructions",3],
+["Generations of computers","Which generation made computers small enough to be placed on a desk for personal use?","First generation","Second generation","Zero generation","Fourth generation",3],
+["Data and Information","Data refers to","processed and meaningful results","final examination results","raw facts that have not been processed","computer reports",2],
+["Data and Information","Information is best defined as","processed data that is meaningful to the user","raw facts from the market","unprocessed sales figures","empty computer files",0],
+["Data and Information","Which of these is an example of data?","The final report card after processing","An analysed weather summary","A printed school result","Individual marks obtained by students before they are added up",3],
+["Data and Information","Data processing involves which of these steps?","Sleeping, waking and eating","Input, processing, output and storage","Buying, selling and storing","Teaching, learning and playing",1],
+["Data and Information","Which of these can be regarded as data?","A weather forecast summary","An examination result sheet","Symbols, numbers, words and pictures","A class timetable",2],
+["Data and Information","A database is","a collection of related data stored together","a type of computer game","an output device","a printing machine",0],
+["Data and Information","A person obtains knowledge when he or she","stores raw data without looking at it","interprets information and understands it","deletes all computer files","switches off the computer",1],
+["Data and Information","Which of these is the correct order of data processing?","Output, input, storage, processing","Storage, output, processing, input","Processing, storage, input, output","Input, processing, output and storage",3],
+["Information Transmission","Transmission of information means","storing data in a computer","sending data from one place to another","deleting old records","buying a telephone",1],
+["Information Transmission","Which of these is a medium used for transmitting information?","Optical fibre","Keyboard","Monitor","Mouse",0],
+["Information Transmission","Which is the correct order of elements in a communication process?","Receiver, message, channel, sender","Channel, receiver, sender, message","Message, receiver, channel, sender","Sender, message, channel, receiver",3],
+["Information Transmission","Which of these is an example of modern means of transmitting information?","Drum beating only","Runner messenger","Email","Smoke signals",2],
+["Information Transmission","The main advantage of modern information transmission is that it","is always very slow","offers speed, long distance and large volume of data","works only within one room","requires no medium",1],
+["Information Transmission","The telegraph was an early device used to","send electrical signals as messages over distance","store photographs","process student marks","print newspapers only",0],
+["Information Transmission","Bluetooth is a means of transmitting information mainly over","very long distances across oceans","satellite links only","optical fibre cables only","short distances between nearby devices",3],
+["Information Transmission","A fax machine is used mainly to","play music","store large databases","send printed documents and pictures over telephone lines","type school assignments only",2]
+]);
+
+defBank("JSS2|Computer", [
+["Revision/Welcome Test","A computer is best defined as a machine that","accepts data, processes it and produces information","stores only music and pictures","works without any input from the user","never makes mistakes",0],
+["Revision/Welcome Test","Which of the following is a characteristic of a computer?","It gets tired after long hours of work","Very high speed of processing","It works only in daylight","It often forgets stored data",1],
+["Revision/Welcome Test","Raw facts and figures that have not been processed are called","information","hardware","data","software",2],
+["Revision/Welcome Test","Which of the following is NOT a component of a computer system?","Hardware","Software","Peopleware","Weather",3],
+["Revision/Welcome Test","The first generation of computers used which electronic devices?","Transistors","Vacuum tubes","Integrated circuits","Microprocessors",1],
+["Revision/Welcome Test","Which of these is an early mechanical calculating device?","Abacus","Keyboard","Plotter","Scanner",0],
+["Revision/Welcome Test","Information is different from data because information is","raw facts","unprocessed figures","meaningless symbols","processed data that has meaning",3],
+["Revision/Welcome Test","Which device is used to send information from one place to another?","Speaker","Mouse","Modem","Scanner",2],
+["Classification of computers","A small computer that can be carried and used on the lap is called a","laptop","mainframe","supercomputer","minicomputer",0],
+["Classification of computers","Which of the following is a microcomputer?","Mainframe","Tablet","Supercomputer","Minicomputer",1],
+["Classification of computers","A computer built to perform one specific task, such as traffic control, is a","general-purpose computer","hybrid computer","special-purpose computer","desktop computer",2],
+["Classification of computers","A computer that measures continuously changing values such as temperature is a","digital computer","special-purpose computer","general-purpose computer","analogue computer",3],
+["Classification of computers","Which type of computer processes data in the form of 0 and 1?","digital computer","analogue computer","hybrid computer","mechanical computer",0],
+["Classification of computers","A computer that combines the features of analogue and digital computers is called a","mainframe computer","supercomputer","hybrid computer","minicomputer",2],
+["Classification of computers","Which of these is an example of a supercomputer?","A smartphone","A machine used for weather forecasting that handles very large calculations","A pocket calculator","A tablet",1],
+["Classification of computers","Which statement best distinguishes a mainframe from a supercomputer?","A mainframe is always smaller in every way than a supercomputer","A supercomputer is used only for typing documents","Neither machine uses any operating system","A mainframe serves many users at once while a supercomputer solves very complex scientific problems",3],
+["Classification of computers","Which of the following is NOT a way of classifying computers by size?","Analogue computer","Minicomputer","Mainframe","Supercomputer",0],
+["The computer system","A complete computer system consists of hardware, software and","electricity","printers","keyboards","peopleware",3],
+["The computer system","The correct sequence in which a computer handles data is","input, process, output","output, input, process","process, output, input","storage, input, process",0],
+["The computer system","The box that holds the CPU, the motherboard and other internal parts is called the","monitor","system unit","keyboard","printer",1],
+["The computer system","Devices such as the keyboard and mouse that feed data into the computer are called","output devices","storage devices","input devices","software",2],
+["The computer system","A printer and a monitor are examples of","input devices","storage devices","primary memory","output devices",3],
+["The computer system","In the five resource components of a computer system, the step-by-step instructions for carrying out a task are called","data","procedures","hardware","people",1],
+["The computer system","Which of the following is a peripheral device?","Monitor","CPU","RAM","Motherboard",0],
+["The computer system","The result produced after a computer has processed data is called","input","hardware","information","procedure",2],
+["Hardware components","Which of the following is an input device?","Monitor","Keyboard","Printer","Speaker",1],
+["Hardware components","Which of these is a storage device?","Mouse","Monitor","Flash drive","Scanner",2],
+["Hardware components","The CPU is made up of the control unit, the memory unit and the","printer","monitor","keyboard","arithmetic logic unit",3],
+["Hardware components","Memory that loses its contents when the computer is switched off is","volatile memory","ROM","hard disk","CD-ROM",0],
+["Hardware components","ROM is a type of memory that is","volatile and easy to erase","non-volatile, keeping data even without power","used only for storing pictures","slower than a keyboard",1],
+["Hardware components","Which of these is a secondary storage device?","RAM","CPU register","Cache memory","Hard disk",3],
+["Hardware components","Which device is used to produce a paper copy of a document?","Scanner","Monitor","Printer","Mouse",2],
+["Hardware components","Primary memory is also known as","main memory","backup memory","optical memory","offline storage",0],
+["Hardware components","A device that reads images or text from paper into the computer is a","printer","scanner","speaker","plotter",1],
+["Software","Software is best defined as the","physical parts of a computer","cables that connect devices","set of instructions that tells the hardware what to do","electricity that runs a computer",2],
+["Software","Which of the following is system software?","Word processor","Spreadsheet package","Web browser","Operating system",3],
+["Software","An operating system that runs on many smartphones and tablets is","Android","Microsoft Word","Excel","Firefox",0],
+["Software","A program that searches for and destroys harmful programs on a computer is called","file manager","antivirus program","word processor","spreadsheet",1],
+["Software","Which of these is application software?","Operating system","Utility program","Word processor","File manager",2],
+["Software","Software that anyone may use, copy and modify freely is called","open-source software","proprietary software","malware","firmware",0],
+["Software","The main difference between hardware and software is that hardware","is a set of instructions","cannot be touched","runs only on phones","is the physical part while software is the set of instructions",3],
+["Software","Which of these is an example of proprietary software?","Linux","A paid word processor sold with a licence that forbids copying","GNU","An app released with a licence that lets everyone change the source code",1],
+["Peopleware","Peopleware refers to the","cables used in a computer","programs installed on a computer","devices connected to a computer","human resources that operate and maintain the computer system",3],
+["Peopleware","A person who writes and tests computer programs is called a","systems analyst","computer operator","programmer","end user",2],
+["Peopleware","The person who studies the needs of an organisation and designs a computer-based solution is a","computer operator","systems analyst","typist","messenger",1],
+["Peopleware","Without trained people, a computer system will","be useless because nobody can operate and maintain it","work better on its own","repair itself automatically","create its own software",0],
+["Peopleware","Which of these careers comes directly from the study of computing?","Bus driver","Tailor","Fisherman","Software engineer",3],
+["Peopleware","The staff who keep the computer running day to day, such as operators and administrators, form the","hardware of the system","software of the system","peopleware of the system","data of the system",2],
+["Peopleware","Understanding how to use computers and digital tools responsibly is called","computer literacy","electricity supply","hardware maintenance","data entry",0],
+["Peopleware","The person who repairs and maintains computer hardware is a","programmer","computer technician","systems analyst","end user",1]
+]);
+
+defBank("SSS1|Digital Technology", [
+["Introduction to digital technology","Digital technology primarily refers to technology that","uses only analogue signals","processes data in discrete binary form","works only with mechanical parts","cannot store information",1],
+["History and evolution of digital technology","The first generation of computers used","transistors","integrated circuits","vacuum tubes","microprocessors",2],
+["History and evolution of digital technology","Which of the following is the earliest mechanical calculating device?","Abacus","Pascaline","Analytical Engine","ENIAC",0],
+["Number systems","The binary number system uses only the digits","0 and 1","0 to 7","0 to 9","0 to 15",0],
+["Number systems","Convert the decimal number 13 to binary.","1101","1011","1110","1001",0],
+["Number systems","The octal number system is based on the power of","2","8","10","16",1],
+["Number systems","Convert the binary number 1010 to decimal.","8","10","12","14",1],
+["Number systems","Which of the following is NOT a hexadecimal digit?","G","F","A","D",0],
+["Computer hardware","The Central Processing Unit (CPU) is often called the","brain of the computer","heart of the computer","eyes of the computer","memory of the computer",0],
+["Computer hardware","Which of the following is an input device?","Monitor","Printer","Keyboard","Speaker",2],
+["Computer hardware","RAM is an example of","permanent storage","volatile memory","secondary storage","optical storage",1],
+["Computer hardware","Which storage device uses laser technology to read and write data?","Hard disk","Flash drive","Optical disc (CD/DVD)","Magnetic tape",2],
+["Computer hardware","The smallest unit of data in a computer is","byte","bit","nibble","word",1],
+["Number systems","Convert the decimal number 25 to hexadecimal.","19","1A","15","18",0],
+["History and evolution of digital technology","Which generation of computers introduced the microprocessor?","First","Second","Third","Fourth",3],
+["Computer hardware","An example of an output device is","mouse","scanner","monitor","joystick",2],
+["Computer hardware","The full meaning of CPU is","Central Processing Unit","Computer Processing Unit","Central Program Unit","Control Processing Unit",0],
+["Computer hardware","Which of the following is NOT a type of primary memory?","RAM","ROM","Cache","Hard disk",3],
+["Number systems","Add the binary numbers 1011 and 0101.","10000","10001","1100","1110",0],
+["Computer hardware","The device that converts digital signals to analogue signals for transmission over telephone lines is called","modem","router","switch","hub",0],
+["Computer hardware","Which of the following best describes ROM?","It is volatile and can be written to freely","It retains data even when power is off","It is used only for temporary calculations","It is slower than a hard disk",1],
+["History and evolution of digital technology","Charles Babbage is known as the","father of the computer","inventor of the transistor","creator of the first programming language","designer of the Internet",0],
+["Number systems","Convert the octal number 17 to decimal.","15","13","17","19",0],
+["Computer hardware","Which of the following is a secondary storage device?","Cache memory","Register","USB flash drive","RAM",2],
+["Computer hardware","The main function of the Arithmetic Logic Unit (ALU) is to","store data permanently","perform arithmetic and logical operations","control the flow of data","display output on the screen",1],
+["Introduction to digital technology","Digital technology primarily stores and processes information as","continuous physical quantities","discrete binary digits","electrical currents only","sound waves",1],
+["Introduction to digital technology","Which of the following is a digital device?","Analogue wall clock with moving hands","Gramophone","Digital camera","Mechanical typewriter",2],
+["Introduction to digital technology","A signal that changes smoothly and continuously over time is called an","analogue signal","digital signal","binary signal","optical signal",0],
+["Introduction to digital technology","Digitisation means","printing a document on paper","compressing a file","connecting to the internet","converting analogue information into digital form",3],
+["Introduction to digital technology","One advantage of digital technology is that","digital data cannot be copied","digital signals can be copied and transmitted without loss of quality","digital devices never need electricity","digital information cannot be stored",1],
+["Introduction to digital technology","Which of the following is an example of digital communication?","Sending a letter by post","Shouting to a friend across a field","Using an analogue loudspeaker","Sending a text message from a smartphone",3],
+["Introduction to digital technology","Digital literacy is the ability to","repair damaged computer hardware","use digital devices and digital information responsibly","memorise every key on the keyboard","write programs in machine code",1],
+["Introduction to digital technology","Digital data is usually represented using","continuous waves only","handwritten symbols","bits, the digits 0 and 1","magnetic tape only",2],
+["Introduction to digital technology","Which of these shows time in digital form?","A pendulum clock","A clock with hands sweeping round a dial","A sundial","A clock that displays numbers on a screen",3],
+["Introduction to digital technology","Which of the following best describes the effect of digital technology on society?","It has made information sharing slower","It has made record keeping more difficult","It has increased access to information and communication","It has removed the need for schools",2],
+["Introduction to digital technology","Which of these is a digital device used for reading electronic books?","Gramophone","Analogue thermometer","Mechanical scale","E-reader",3],
+["History and evolution of digital technology","The second generation of computers used","vacuum tubes","transistors","integrated circuits","microprocessors",1],
+["History and evolution of digital technology","The third generation of computers was built with","vacuum tubes","mechanical gears","integrated circuits","punch cards",2],
+["History and evolution of digital technology","ENIAC, completed in 1946, is generally regarded as","the first mechanical calculator","the first personal computer","the first programming language","one of the first electronic general-purpose computers",3],
+["History and evolution of digital technology","Who designed the Analytical Engine and is called the father of the computer?","Charles Babbage","Alan Turing","John von Neumann","Tim Berners-Lee",0],
+["History and evolution of digital technology","Herman Hollerith is remembered for","designing the first smartphone","developing the punched card tabulating machine used for the census","inventing the transistor","creating the World Wide Web",1],
+["History and evolution of digital technology","The invention that made computers smaller and more reliable than vacuum tubes was the","punched card","steam engine","typewriter","transistor",3],
+["History and evolution of digital technology","The growth of the internet and the World Wide Web belongs to which stage in the history of computing?","mechanical era","vacuum tube era","transistor era","information or internet era",3],
+["History and evolution of digital technology","Smartphones, cloud computing and social media belong to the","first generation of computing","mechanical age","analogue age","mobile and digital age",3],
+["Number systems","The base, or radix, of the binary number system is","2","8","10","16",0],
+["Number systems","One byte is equal to how many bits?","4","8","16","32",1],
+["Number systems","A nibble is equal to how many bits?","2","4","8","16",2],
+["Number systems","The octal number 12 is equal to which decimal number?","8","9","11","10",3],
+["Number systems","Hexadecimal numbers are widely used in web design to represent","file sizes","printer speeds","keyboard layouts","colours",3],
+["Computer hardware","Which of the following is NOT a peripheral device of a computer?","Mouse","Monitor","System unit","Keyboard",2]
+]);
+
+defBank("SSS2|Digital Technology", [
+["Advanced word processing","In Microsoft Word, a style is used to","change the page size only","apply a consistent set of formatting to text","insert pictures automatically","create hyperlinks",1],
+["Advanced word processing","Mail merge is mainly used to","send the same letter to many recipients with personalised details","merge two different documents into one","create a table of contents","protect a document with a password",0],
+["Advanced word processing","Which of the following is required for a successful mail merge?","Main document and data source","Only a main document","Only a data source","A scanner",0],
+["Advanced word processing","To insert a table of contents in Word, you normally use","Insert then Table","References then Table of Contents","Layout then Columns","Review then Spelling",1],
+["Advanced word processing","Section breaks in Word allow you to","change page orientation or headers for different parts of a document","delete entire pages","protect the document","insert footnotes only",0],
+["Advanced word processing","Headers and footers appear","only on the first page","at the top and bottom of every page (or selected sections)","only in the middle of the page","only when printing",1],
+["Advanced spreadsheet","The formula =SUM(A1:A5) will","multiply the values in A1 to A5","add the values in cells A1 to A5","count the number of cells","find the average",1],
+["Advanced spreadsheet","Which function returns the highest value in a range?","MIN","MAX","AVERAGE","COUNT",1],
+["Advanced spreadsheet","Conditional formatting in Excel is used to","change cell appearance based on rules or values","protect the worksheet","create charts automatically","sort data alphabetically",0],
+["Advanced spreadsheet (2)","A pivot table is useful for","summarising and analysing large amounts of data","drawing pictures","writing long essays","sending emails",0],
+["Advanced spreadsheet","Data validation in Excel helps to","restrict the type of data that can be entered into a cell","change the font colour only","delete empty rows","create hyperlinks",0],
+["Advanced spreadsheet (2)","Which chart type is best for showing proportions of a whole?","Line chart","Pie chart","Bar chart","Scatter chart",1],
+["Advanced spreadsheet (2)","What-if analysis tools in Excel include","Goal Seek, Scenario Manager and Data Tables","only AutoSum","only Pivot Tables","only charts",0],
+["Advanced spreadsheet","To freeze the top row so that it remains visible while scrolling, you use","View then Freeze Panes then Freeze Top Row","Insert then Header","Home then Format","Data then Sort",0],
+["Advanced spreadsheet","Absolute cell reference in Excel is indicated by","A1","$A$1","A$1","$A1 only",1],
+["Advanced spreadsheet","The function =IF(B2>=50,Pass,Fail) will","always display Pass","display Pass if B2 is 50 or more, otherwise Fail","add 50 to B2","count the cells",1],
+["Advanced word processing","In Word, the References tab is used mainly for","inserting citations, footnotes and table of contents","changing page margins","applying themes only","inserting shapes",0],
+["Advanced word processing","Which of the following is an example of advanced formatting in Word?","Applying heading styles and multilevel lists","Changing font colour only","Typing text","Saving the file",0],
+["Advanced spreadsheet","To create a drop-down list in Excel cells, you use","Data Validation","Conditional Formatting","Pivot Table","Chart Wizard",0],
+["Advanced spreadsheet","The formula =VLOOKUP(A2,Sheet2!A:B,2,FALSE) is used to","look up a value in a table and return a corresponding value","add two columns","sort data","create a chart",0],
+["Advanced word processing","Page numbers in Word are usually inserted in the","header or footer","body of the text only","title bar","status bar",0],
+["Advanced spreadsheet (2)","Which Excel feature allows you to test different values for a formula to reach a desired result?","Goal Seek","AutoFilter","Sort","Find and Replace",0],
+["Advanced word processing","In Word, Track Changes is useful for","reviewing and accepting or rejecting edits made by others","inserting pictures","creating mail merge","changing page size",0],
+["Advanced spreadsheet","A relative cell reference in Excel","changes when the formula is copied to another cell","never changes","always starts with $","is used only for charts",0],
+["Advanced spreadsheet (2)","To protect a worksheet so that users can only edit specific cells, you use","Review then Protect Sheet","File then Save As","Insert then Table","Home then Format Painter",0],
+["Revision/Welcome Test","Which of the following best describes an analogue signal?","A signal that changes in discrete steps","A signal that can only be stored in RAM","A signal that varies continuously over time","A signal made up of zeros and ones only",2],
+["Revision/Welcome Test","The first generation of computers used which main components?","Transistors","Integrated circuits","Microprocessors","Vacuum tubes",3],
+["Revision/Welcome Test","What is the decimal value of the binary number 1010?","8","12","10","14",2],
+["Revision/Welcome Test","Which hardware device is used to produce hard copies of documents?","Keyboard","Mouse","Monitor","Printer",3],
+["Revision/Welcome Test","Which component of the CPU performs arithmetic and logical operations?","Control Unit","Main memory","Arithmetic and Logic Unit","Input unit",2],
+["Revision/Welcome Test","RAM is best described as","permanent memory that keeps its contents when power is off","read-only memory used only by the operating system","temporary memory that loses its contents when power is switched off","a storage device used for backing up files",2],
+["Revision/Welcome Test","Which number system uses only the digits 0 to 7?","Binary","Decimal","Hexadecimal","Octal",3],
+["Revision/Welcome Test","Which of the following is an example of an output device?","Scanner","Keyboard","Digital camera","Loudspeaker",3],
+["Advanced word processing","In Microsoft Word, the Find and Replace feature can be used to","search for specific text and replace it with other text","change the paper size only","insert a new blank page","protect the document from editing",0],
+["Advanced word processing","A footnote in Word is placed","at the top of the current page","at the bottom of the page containing the reference","only in the appendix of the document","inside the header of every page",1],
+["Advanced word processing","To divide the text on a page into two or three vertical blocks of lines, you use","page orientation","columns","headers","page numbers",1],
+["Advanced word processing","A watermark in Word is","a spelling mistake found in the document","text or a picture printed faintly behind the main content","the first line of every paragraph","a shortcut key for saving the file",1],
+["Advanced word processing","A document template in Word is","a tool that corrects grammar errors automatically","a pre-designed file that provides a starting layout for a new document","a type of printer connected to the computer","a command that deletes selected text",1],
+["Advanced word processing","SmartArt in Word is mainly used to","spell-check the document automatically","split the document into separate sections","create diagrams that show relationships and processes visually","change the margin size of the page",2],
+["Advanced word processing","When several people review a shared document, they can add comments so that","the document becomes shorter automatically","the file is converted into a spreadsheet","all formatting is removed from the file","suggestions and notes can be discussed before changes are accepted",3],
+["Advanced spreadsheet","The function =AVERAGE(B2:B6) calculates the","sum of the values in B2 to B6","largest value in B2 to B6","arithmetic mean of the values in B2 to B6","number of empty cells in the range",2],
+["Advanced spreadsheet","Which function counts only the cells that contain numbers in a range?","COUNTA","COUNTBLANK","COUNT","MAX",2],
+["Advanced spreadsheet","To sort a table of data using more than one column, you should","use the Home tab and click Merge and Center","use the Insert tab and create a pivot chart","use the Data tab and add further sort levels","use the Review tab and protect the sheet",2],
+["Advanced spreadsheet","To display values with two decimal places in a numeric cell, you use","the Insert tab then Chart","the Data tab then Sort","the Review tab then Protect Sheet","the Home tab then Number format options",3],
+["Advanced spreadsheet","Adding a page break before printing a large worksheet lets you","protect the sheet from further editing","sort the data alphabetically","convert the worksheet into a chart","control where one printed page ends and the next begins",3],
+["Advanced spreadsheet","A named range in Excel is useful because it","encrypts the workbook with a password","deletes unused rows automatically","converts text entries into numbers","makes formulas easier to read by replacing cell addresses with a label",3],
+["Advanced spreadsheet (2)","A column chart is best used to","show how a value changes continuously over time","show the relationship between two sets of numeric values","compare values across different categories","show parts of a whole as percentages",2],
+["Advanced spreadsheet (2)","AutoFilter in Excel allows you to","protect a worksheet with a password","create a chart automatically","display only the rows that meet specified criteria","merge two open workbooks together",2],
+["Advanced spreadsheet (2)","Sparklines in Excel are","large charts placed on a separate chart sheet","formulas that total a whole column","rules that change the colour of a cell automatically","tiny charts placed inside a single cell to summarise a trend",3],
+["Advanced spreadsheet (2)","Which of these is an example of a conditional formatting rule?","Printing the worksheet on A4 paper","Protecting the workbook with a password","Hiding the gridlines on the screen","Showing all scores below 40 in red text",3]
+]);
+
+defBank("SSS3|Digital Technology", [
+["Revision/Welcome Test","An algorithm is best described as","a step-by-step procedure for solving a problem","a programming language","a type of computer hardware","a finished software product",0],
+["Revision/Welcome Test","Which of the following is a common data structure used to store elements in a last-in-first-out (LIFO) manner?","Queue","Stack","Array","Linked list only",1],
+["Revision/Welcome Test","A loop that continues as long as a condition is true is an example of","sequence","selection","iteration (repetition)","modularisation",2],
+["Revision/Welcome Test","Modular programming involves","dividing a program into smaller, independent modules or functions","writing the entire program in one long block","using only global variables","avoiding functions completely",0],
+["Revision/Welcome Test","Debugging is the process of","finding and fixing errors in a program","writing documentation","designing the user interface","selling the software",0],
+["Revision/Welcome Test","Which of the following is a control structure?","if-else statement","Variable declaration only","Comment","Print statement only",0],
+["Software Development Life Cycle (SDLC)","In the Waterfall model of SDLC, the phases are generally","sequential and one phase must finish before the next begins","completely overlapping and flexible","without any planning","only for maintenance",0],
+["Software Development Life Cycle (SDLC)","Agile methodology emphasises","iterative development, customer collaboration and responding to change","completing all documentation before any coding","rigid sequential phases","no testing",0],
+["Software Development Life Cycle (SDLC)","The first phase of the Software Development Life Cycle is usually","Requirements gathering / Analysis","Coding","Testing","Maintenance",0],
+["Software Development Life Cycle (SDLC)","Prototyping in SDLC is useful because it","allows users to see and give feedback on an early version of the system","eliminates the need for testing","removes the need for requirements","is used only for hardware",0],
+["Software Development Life Cycle (SDLC)","Which testing is performed to check that individual modules work correctly?","Unit testing","System testing","Acceptance testing","Integration testing only",0],
+["Software Development Life Cycle (SDLC)","Maintenance in SDLC includes","correcting faults, improving performance and adapting to new requirements after delivery","only writing the first version of the code","gathering initial requirements","designing the database only",0],
+["Revision/Welcome Test","A flowchart is used to","represent the flow of an algorithm graphically","store data permanently","compile a program","debug hardware",0],
+["Revision/Welcome Test","In programming, a variable is","a named storage location that can hold a value which may change","a fixed constant that never changes","a type of loop","a programming language",0],
+["Software Development Life Cycle (SDLC)","The Spiral model of SDLC is particularly useful for","large, high-risk projects that need iterative risk analysis","very small programs only","projects with no risk","hardware design only",0],
+["Revision/Welcome Test","Pseudocode is","a way of describing an algorithm using structured English-like statements","actual executable machine code","a type of virus","a hardware component",0],
+["Revision/Welcome Test","Which of the following is an example of a selection control structure?","if (score >= 50) then print Pass else print Fail","for loop only","while loop only","function call only",0],
+["Software Development Life Cycle (SDLC)","Requirements gathering involves","understanding and documenting what the user needs the system to do","writing the final code","testing the finished product","selling the software",0],
+["Revision/Welcome Test","An array is a data structure that","stores a fixed-size collection of elements of the same type","can only store one value","works only with text","is used only for graphics",0],
+["Software Development Life Cycle (SDLC)","Integration testing is performed to","check that different modules work correctly together","test only one function","replace unit testing","design the user interface",0],
+["Software Development Life Cycle (SDLC)","In Agile, a short fixed period of development (usually 1-4 weeks) is called a","Sprint or Iteration","Waterfall phase","Spiral cycle only","Maintenance period",0],
+["Revision/Welcome Test","A syntax error occurs when","the program violates the rules of the programming language","the logic of the program is wrong but the code runs","the computer hardware fails","the user enters wrong data only",0],
+["Revision/Welcome Test","The main advantage of modular programming is","easier development, testing, maintenance and code reuse","making the program longer","avoiding functions","increasing the number of errors",0],
+["Software Development Life Cycle (SDLC)","User Acceptance Testing (UAT) is usually carried out by","the end users to confirm the system meets their requirements","only the programmers","the hardware technicians","the marketing team only",0],
+["Software Development Life Cycle (SDLC)","Which SDLC model allows the project to move back to earlier phases if needed and focuses on risk management?","Spiral model","Pure Waterfall (strict sequential)","Big Bang model","Code-and-fix only",0],
+["Advanced Programming (Python)","Python is described as an interpreted language because","its statements are executed line by line by an interpreter rather than compiled fully before running","it can only run on one type of computer","it does not allow the use of variables","it must be written entirely in capital letters",0],
+["Advanced Programming (Python)","In Python, a block of code is identified by","curly brackets only","indentation, which is consistent spacing at the start of lines","quotation marks around every line","semicolons at the end of every line",1],
+["Advanced Programming (Python)","What is the data type of the value 3.14 in Python?","int","float","str","bool",1],
+["Advanced Programming (Python)","Which statement is used to read input from the user in Python?","read()","input()","scan()","get()",1],
+["Advanced Programming (Python)","What is the output of print(7 // 2) in Python?","3.5","3","4","1",1],
+["Advanced Programming (Python)","Which comparison operator checks whether two values are equal in Python?","=","!=","==",">=",2],
+["Advanced Programming (Python)","Which of the following is the correct way to define a list in Python?","(1, 2, 3)","{1, 2, 3}","[1, 2, 3]","<1, 2, 3>",2],
+["Advanced Programming (Python)","Given the list names = ['Ada', 'Bola', 'Chidi'], what does names[1] return?","Ada","Chidi","Bola","the whole list",2],
+["Advanced Programming (Python)","Which keyword is used to define a new function in Python?","func","define","def","function",2],
+["Advanced Programming (Python)","How many times will the body of the loop for i in range(4) be executed?","3 times","5 times","2 times","4 times",3],
+["Advanced Programming (Python)","Which statement is used to leave a loop early in Python?","pass","skip","halt","break",3],
+["Advanced Programming (Python)","Which of the following is a correct Python comment?","// this is a comment","<!-- this is a comment -->","** this is a comment **","# this is a comment",3],
+["Advanced Programming (Python)","Which module must be imported before using the function sqrt()?","string","sys","os","math",3],
+["Advanced Programming II","Recursion in programming means","repeating the same code many times using a loop","a function calling itself to solve a smaller part of the problem","deleting a function after it has been used","storing data in a list",1],
+["Advanced Programming II","The base case in a recursive function is","the largest value that can be stored in memory","the condition that stops the recursion by giving a simple direct answer","the first line of code in the file","the name given to the function",1],
+["Advanced Programming II","Which statement about file handling in Python is correct?","Files stay open forever once they have been created","A file should be closed after use, or opened with a with block","Only image files can be opened with open()","open() cannot be used for text files",1],
+["Advanced Programming II","In Python, what does the mode 'r' mean when opening a file?","write only, replacing the file","read only","append to the end of the file","delete the file",1],
+["Advanced Programming II","A class in object-oriented programming is","a single number stored in memory","a copy of an already existing program","a blueprint for creating objects, with attributes and methods","a type of loop used for repetition",2],
+["Advanced Programming II","An object created from a class is called","a compiler","a method","an instance","a syntax rule",2],
+["Advanced Programming II","Which of the following is an attribute of a car object?","drive()","brake()","colour","start()",2],
+["Advanced Programming II","Inheritance in OOP allows a class to","delete another class permanently","run only once in a program","reuse data and behaviour from an existing class","avoid using functions",2],
+["Advanced Programming II","Searching a sorted list by repeatedly dividing the search interval in half is called","linear search","bubble sort","random search","binary search",3],
+["Advanced Programming II","In bubble sort, the algorithm works by","dividing the list into two halves","choosing a pivot for each pass","reading the list from a file","repeatedly swapping adjacent values that are out of order",3],
+["Advanced Programming II","The time complexity O(n) describes an algorithm whose running time grows","very slowly and hardly grows at all","in proportion to the square of the input size","as a fixed constant, no matter how large the input","in direct proportion to the input size n",3],
+["Advanced Programming II","Which statement produces a whole random number between 1 and 6 inclusive?","random.range(1, 6)","random.uniform(1, 6)","random.sample(1, 6)","random.randint(1, 6)",3]
+]);
+defBank("JSS1|Home Economics", [
+["Introduction to Home Economics","Home Economics is best defined as the study of","managing the home and family resources for healthy living","building houses and roads only","repairing electrical appliances","teaching in secondary schools",0],
+["Introduction to Home Economics","Which of these is NOT an area of Home Economics?","Food and nutrition","Clothing and textiles","Home management","Automobile engineering",3],
+["Introduction to Home Economics","The relationship between Home Economics and Biology is that Biology","helps in understanding the human body and food nutrients","teaches how to build houses","is only about growing crops","has no connection with Home Economics",0],
+["Introduction to Home Economics","One importance of Home Economics to the individual is that it","teaches how to drive cars","helps in personal hygiene and healthy living","makes one a professional tailor only","replaces the need for doctors",1],
+["Introduction to Home Economics","Home Economics is also known as","Domestic Science","Civil Engineering","Veterinary Medicine","Aeronautics",0],
+["Introduction to Home Economics","The main goal of Home Economics is to","improve the quality of family life","build skyscrapers","manufacture cars","mine minerals",0],
+["Home Economics and National Development","Home Economics contributes to national development by","producing only fashion designers","training citizens in food, health and home management","building federal roads","printing national currency",1],
+["Home Economics and National Development","Which of these is a career opportunity in Home Economics?","Petroleum engineer","Dietitian","Aeronautical engineer","Mining engineer",1],
+["Home Economics and National Development","The importance of Home Economics to the family includes","increasing family conflicts only","teaching the family to eat balanced meals and keep a clean home","encouraging child labour","buying expensive cars",1],
+["Home Economics and National Development","Home Economics helps reduce poverty by","teaching skills for self-employment and income generation","encouraging laziness","promoting dependence on government","discouraging education",0],
+["Home Economics and National Development","Which Nigerian agency promotes Home Economics education?","Federal Ministry of Education","Nigerian Ports Authority","Central Bank","NNPC",0],
+["Home Economics and National Development","Home Economics improves national health by","teaching nutrition and hygiene","building airports","extracting oil","minting coins",0],
+["Home Economics and National Development","A graduate of Home Economics can work as a","fashion designer","oil driller","mining engineer","airline pilot",0],
+["Home Economics and National Development","Home Economics contributes to the economy by","producing skilled workers in food and textile industries","importing all goods","closing local businesses","reducing exports",0],
+["Home Economics and National Development","Which of these is an area of Home Economics?","Food and Nutrition","Petroleum Geology","Bridge Construction","Aircraft Maintenance",0],
+["Home Economics and National Development","Home Economics teaches the wise use of","family resources only","family, time, money and energy resources","only money","only time",1],
+["The Human Body (Hair)","Each hair grows from a narrow tube in the skin called a","pore","follicle","gland","duct",1],
+["The Human Body (Hair)","The oil gland near the hair base produces oil that","lubricates the hair and softens the skin","makes hair fall out","changes hair colour","stops hair growth",0],
+["The Human Body (Hair)","Which of these is a function of the hair?","digestion of food","protection of the head","pumping of blood","breathing",1],
+["The Human Body (Hair)","Good care of the hair includes","sharing combs with friends","washing and combing the hair regularly","applying bleaching cream daily","cutting the hair with a broken bottle",1],
+["The Human Body (Hair)","Dandruff is","excessive oil on the scalp","dead skin flakes on the scalp","a type of hair dye","a hair growth stimulant",1],
+["The Human Body (Hair)","Hair should be washed","never","regularly, depending on hair type","only once a year","only with bleach",1],
+["The Human Body (Hair)","Combing the hair helps to","remove dirt and stimulate blood circulation","cut the hair","change hair colour","make hair fall out",0],
+["The Human Body (Hair)","Short hair can be washed","only once a month","daily","never","only with hot water",1],
+["The Human Body (Hair)","Long hair should be washed","only once a year","at least once a week","never","only with dirty water",1],
+["The Human Body (Hair)","Oiling the hair regularly prevents","hair damage and dryness","hair growth","hair colour change","hair loss completely",0],
+["The Human Body (Eye, Nose, Ear)","The coloured part of the eye that surrounds the pupil is the","cornea","iris","retina","eyelash",1],
+["The Human Body (Eye, Nose, Ear)","The transparent front part of the eye is the","iris","cornea","retina","pupil",1],
+["The Human Body (Eye, Nose, Ear)","The hole in the front of the eyeball through which light passes is the","iris","cornea","pupil","retina",2],
+["The Human Body (Eye, Nose, Ear)","The light-sensitive spot where images are formed is the","cornea","iris","pupil","retina",3],
+["The Human Body (Eye, Nose, Ear)","The nose is the sense organ for","hearing","smell","sight","touch",1],
+["The Human Body (Eye, Nose, Ear)","The nose also functions as a","passage for air to the lungs","organ for digestion","organ for sight","organ for touch",0],
+["The Human Body (Eye, Nose, Ear)","The tiny hairs in the nose","trap dust and filter air","produce mucus only","help in hearing","change the voice",0],
+["The Human Body (Eye, Nose, Ear)","The ear is divided into how many main parts?","one","two","three","four",2],
+["The Human Body (Eye, Nose, Ear)","The part of the ear we can see is the","inner ear","middle ear","outer ear","ear canal",2],
+["The Human Body (Eye, Nose, Ear)","The ear helps with","hearing and balance","digestion only","breathing only","sight only",0],
+["The Human Body (Eye, Nose, Ear)","Care of the ear includes","putting sharp objects inside","washing the outer ear daily","ignoring ear pain","using cotton buds to dig deep",1],
+["The Human Body (Eye, Nose, Ear)","Care of the eyes includes","looking directly at the sun","using good light when reading","sharing eye makeup","watching TV very closely",1],
+["The Human Body (Eye, Nose, Ear)","Care of the nose includes","poking objects into the nose","avoiding picking the nose","plucking nose hairs","blowing the nose forcefully always",1],
+["The Human Body (Skin)","The outer layer of the skin is called the","dermis","epidermis","subcutaneous layer","muscle",1],
+["The Human Body (Skin)","The inner layer of the skin is called the","epidermis","dermis","cuticle","nail",1],
+["The Human Body (Skin)","One function of the skin is to","pump blood around the body","protect the body from germs and injury","produce red blood cells","digest food",1],
+["The Human Body (Skin)","The skin helps to keep body temperature normal by","only producing heat","sweating and blood flow control","never changing temperature","storing only fat",1],
+["The Human Body (Skin)","Sweat glands in the skin produce","oil only","sweat to cool the body","blood only","tears",1],
+["The Human Body (Skin)","Good care of the skin includes","using bleaching creams daily","bathing regularly with soap and water","sharing towels with others","never washing the body",1],
+["The Human Body (Skin)","Types of skin include","normal, dry, oily and combination","only oily skin","only dry skin","only normal skin",0],
+["The Human Body (Skin)","Vitamin D is produced by the skin when exposed to","moonlight","sunlight","artificial light only","candlelight",1],
+["The Human Body (Skin)","Body odour can be prevented by","never bathing","regular bathing and use of mild deodorant","wearing dirty clothes","sharing unwashed clothes",1],
+["The Human Body (Teeth, Hand, Feet)","The first set of teeth in children is called","permanent teeth","milk or temporary teeth","wisdom teeth","canines only",1],
+["The Human Body (Teeth, Hand, Feet)","Children usually have how many milk teeth?","20","24","32","40",0],
+["The Human Body (Teeth, Hand, Feet)","Adults usually have how many permanent teeth?","20","24","32","40",2],
+["The Human Body (Teeth, Hand, Feet)","The incisors are used for","grinding food","cutting and biting food","tearing only","holding food only",1],
+["The Human Body (Teeth, Hand, Feet)","The canines are used for","cutting food","tearing and piercing food","grinding food","holding food only",1],
+["The Human Body (Teeth, Hand, Feet)","The molars are used for","cutting food","grinding and chewing food","tearing only","biting only",1],
+["The Human Body (Teeth, Hand, Feet)","Daily care of the teeth includes","never brushing","brushing twice daily with toothpaste","using teeth as bottle openers","eating only sweets",1],
+["The Human Body (Teeth, Hand, Feet)","Manicure is the care of the","feet and toenails","hands and fingernails","hair and scalp","teeth and gums",1],
+["The Human Body (Teeth, Hand, Feet)","Pedicure is the care of the","hands and fingernails","feet and toenails","hair and scalp","teeth and gums",1],
+["The Human Body (Teeth, Hand, Feet)","The hands are used for","walking only","touching and doing work","breathing only","seeing only",1],
+["The Human Body (Teeth, Hand, Feet)","The feet and legs provide","support and movement for the body","digestion only","breathing only","sight only",0],
+["The Human Body (Teeth, Hand, Feet)","Care of the feet includes","walking barefoot always","washing and drying feet, especially between toes","wearing tight shoes","never cutting toenails",1]
+]);
+
+defBank("JSS2|Home Economics", [
+["Revision/Welcome Test","Home Economics is best described as the study of","managing home and family resources","building and construction only","repairing vehicles only","computer programming only",0],
+["Revision/Welcome Test","The human body's outer covering is called the","bone","skin","blood","muscle",1],
+["Revision/Welcome Test","A balanced diet is important because it","supplies all nutrients in the right proportions","makes food taste bitter only","causes weight loss","is only for adults",0],
+["Revision/Welcome Test","A home maker is a person who","works only in an office","manages and takes care of the home","travels abroad always","sells goods in the market only",1],
+["Revision/Welcome Test","The kitchen is mainly used for","sleeping","cooking and preparing food","parking vehicles","holding church services",1],
+["Impact of family value on lifestyle","Family values are","beliefs and standards that guide family behaviour","only about money and wealth","laws made by the government","rules for school only",0],
+["Impact of family value on lifestyle","Which of these is a positive family value?","honesty and respect","stealing and lying","fighting and quarrelling","laziness and neglect",0],
+["Impact of family value on lifestyle","Family values influence lifestyle by","having no effect at all","shaping how family members live and make decisions","making everyone rich","causing family breakdown",1],
+["Impact of family value on lifestyle","A lifestyle that reflects good family values includes","drug abuse and truancy","respect for elders and clean living","stealing and disobedience","idleness and gossip",1],
+["Impact of family value on lifestyle","Types of family values include","moral, social and economic values","only religious values","only political values","only financial values",0],
+["Impact of family value on lifestyle","Bad family values can lead to","discipline and respect","indiscipline and family conflict","hard work and success","cleanliness and order",1],
+["Impact of family value on lifestyle","Factors that influence family lifestyle include","income, education and culture","only the weather","only the school","only the church",0],
+["Impact of family value on lifestyle","A family with good values will likely","raise responsible children","encourage stealing","promote laziness","ignore education",0],
+["Impact of family value on lifestyle","Family lifestyle affects","only the parents","every member of the family","only the children","only the neighbours",1],
+["Impact of family value on lifestyle","Values are passed from parents to children through","teaching and example only","ignoring the children","buying expensive gifts","sending them to boarding school",0],
+["Impact of family value on lifestyle","Respect for elders is an example of a","negative value","positive value","financial value","political value",1],
+["Myself as a home maker","A home maker is a person who","works only in an office","manages and takes care of the home","travels abroad always","sells goods in the market only",1],
+["Myself as a home maker","A home maker can be","only a woman","only a man","a man or a woman","only a child",2],
+["Myself as a home maker","Which of these is a responsibility of a home maker?","teaching children good morals","ignoring the children","never cooking for the family","leaving the house dirty",0],
+["Myself as a home maker","Responsibilities of a home maker include","cooking, cleaning and child care","only watching television","only sleeping","only shopping",0],
+["Myself as a home maker","A good home maker should be","lazy and careless","patient, kind and hardworking","rude and impatient","dirty and untidy",1],
+["Myself as a home maker","Qualities of a home maker include","hard work and honesty","dishonesty and laziness","rudeness and neglect","pride and stubbornness",0],
+["Myself as a home maker","Home making activities include","arranging flowers and cleaning","only sleeping","only eating","only playing",0],
+["Myself as a home maker","A home maker serves as a","role model to the children","bad example to the children","a stranger to the family","an enemy in the home",0],
+["Myself as a home maker","The general welfare of the family is the responsibility of the","home maker only","neighbours only","government only","school only",0],
+["Myself as a home maker","A home maker should teach children","good morals and behaviour","stealing and lying","fighting and quarrelling","laziness and disrespect",0],
+["Myself as a home maker","Cleaning the house is a duty of the","home maker","only the children","only the visitors","only the government",0],
+["The Family House","The family house is a building where","only animals live","a family lives together","cars are repaired","goods are stored only",1],
+["The Family House","A home is different from a house because a home","is just a building","is where a family lives with love and care","is only for storing goods","is only for animals",1],
+["The Family House","Which of these is a functional area of the family house?","Swimming pool only","Kitchen","Airport","Cinema hall",1],
+["The Family House","Functional areas of the family house include","kitchen, bedroom, toilet and bathroom","only the sitting room","only the fence","only the gate",0],
+["The Family House","The kitchen is mainly used for","keeping farm animals","cooking and preparing food","parking vehicles","holding church services",1],
+["The Family House","The sitting room is used for","sleeping only","receiving and entertaining visitors","keeping farm tools","cooking food",1],
+["The Family House","The bedroom is used for","cooking only","sleeping and resting","keeping animals","washing cars",1],
+["The Family House","The toilet and bathroom are important because they","are used for storing food","help in maintaining personal hygiene","are for keeping animals","are only for decoration",1],
+["The Family House","The dining room is used for","keeping animals","eating meals together","repairing cars","storing farm tools",1],
+["The Family House","Care of the family house includes","never cleaning","regular sweeping and tidying","allowing refuse to pile up","breaking windows",1],
+["The Family House","Functional areas should be kept","dirty and untidy","clean and well arranged","locked always","dark always",1],
+["The Family House","Ventilation in the house is important because it","blocks fresh air","allows fresh air to circulate","makes the house dark","traps bad smells",1],
+["Flower arrangement","Flower arrangement is used in the home mainly to","make the home dirty","add beauty and a pleasing atmosphere","attract insects only","block the windows",1],
+["Flower arrangement","Uses of flower in the functional areas include","only decoration","beauty, fragrance and pleasant atmosphere","only attracting pests","only blocking doors",1],
+["Flower arrangement","Which of these is NOT a type of flower arrangement?","Horizontal","Vertical","Triangular","Cooking",3],
+["Flower arrangement","Types of flower arrangement include","horizontal, vertical, circular and triangular","only cooking styles","only sleeping positions","only washing methods",0],
+["Flower arrangement","Flowers are placed in the dining table mainly for","hiding the food","decoration and beauty","chasing visitors away","burning as fuel",1],
+["Flower arrangement","Materials needed for flower arrangement include","flowers, vase, scissors and water","only soil","only cement","only wood",0],
+["Flower arrangement","Common flowers used in arrangement include","hibiscus, rose and lily","only stones","only metals","only plastics",0],
+["Flower arrangement","Oval flower arrangement is suitable for","small spaces only","dining tables and large spaces","only bathrooms","only kitchens",1],
+["Flower arrangement","Circular flower arrangement is suitable for","narrow spaces","large spaces and centre of tables","only bedrooms","only toilets",1],
+["Flower arrangement","Vertical flower arrangement is suitable for","wide spaces only","narrow spaces","only gardens","only bathrooms",1],
+["Flower arrangement","Crescent flower arrangement is suitable for","only large spaces","dining tables and narrow spaces","only kitchens","only bedrooms",1],
+["Flower arrangement","Triangular flower arrangement is suitable for","only bathrooms","centre of tables and formal occasions","only kitchens","only toilets",1],
+["Flower arrangement","Flower holders include","only stones","pin holders, floral foam and pebbles","only wood","only plastic",1],
+["Flower arrangement","Water in a flower vase should be","dirty and stagnant","clean and changed regularly","boiling hot","only salt water",1],
+["Flower arrangement","Flower arrangement helps to","make the room dull","express love and cheer up emotions","block light","attract pests",1],
+["Flower arrangement","Common Nigerian flowers for arrangement include","hibiscus, pride of barbados and marigold","only stones","only metals","only plastics",0]
+]);
+
+defBank("JSS3|Home Economics", [
+["Revision/Welcome Test","Home Economics deals mainly with","repairing vehicles","management of home and family resources","building houses","flying aircraft",1],
+["Revision/Welcome Test","A balanced diet contains","only carbohydrates","all classes of food in the right proportions","only vitamins and minerals","only fats and oils",1],
+["Revision/Welcome Test","The kitchen is a functional area used for","sleeping","cooking and food preparation","washing cars","holding parties only",1],
+["Textiles: Definition, types, uses, terms","Textiles are materials made from","only metal sheets","fibres, yarns and fabrics interlaced together","plastic bottles only","wood and stone",1],
+["Textiles: Definition, types, uses, terms","Natural fibres come from","factories only","plants and animals","synthetic chemicals","petroleum products only",1],
+["Textiles: Definition, types, uses, terms","Synthetic fibres are","made from natural plants only","man-made through chemical processes","always cheaper than natural fibres","not used in clothing",1],
+["Textiles: Definition, types, uses, terms","The basic unit of textile fibre is called a","yarn","fibre","fabric","thread",1],
+["Textiles: Definition, types, uses, terms","Yarn is made by","weaving fabric only","spinning fibres together","cutting cloth","dyeing fabric",1],
+["Textiles: Definition, types, uses, terms","Fabric is produced by","only spinning","weaving or knitting yarns","only dyeing","only cutting",1],
+["Textiles: Definition, types, uses, terms","Warp in textiles refers to","threads running lengthwise in a fabric","threads running crosswise","the finished garment","the dye used",0],
+["Textiles: Definition, types, uses, terms","Weft in textiles refers to","threads running crosswise in a fabric","threads running lengthwise","the needle used","the pattern drawn",0],
+["Textiles: Definition, types, uses, terms","Examples of natural fibres include","cotton and wool","nylon and polyester","rayon only","plastic only",0],
+["Textiles: Definition, types, uses, terms","Examples of synthetic fibres include","cotton and silk","nylon and polyester","wool and linen","jute and sisal",1],
+["Textiles: Definition, types, uses, terms","Cotton is a","synthetic fibre","natural fibre from plants","animal fibre","mineral fibre",1],
+["Textiles: Definition, types, uses, terms","Wool is obtained from","plants","sheep and goats","fish","trees only",1],
+["Textiles: Definition, types, uses, terms","Silk is obtained from","cotton plants","silkworms","sheep","rubber trees",1],
+["Textiles: Definition, types, uses, terms","Linen is obtained from","the flax plant","coconut trees","sheep","silkworms",0],
+["Textiles: Important, difference, production, laundering of fabric","Textiles are important for making","only car parts","clothing, household items and medical products","only shoes","only curtains",1],
+["Textiles: Important, difference, production, laundering of fabric","Uses of textiles include","clothing, curtains, bedsheets and bandages","only making ropes","only building houses","only making cars",0],
+["Textiles: Important, difference, production, laundering of fabric","The main difference between natural and synthetic fibres is that natural fibres","are always more expensive","come from nature while synthetic fibres are man-made","cannot be used for clothing","are less durable always",1],
+["Textiles: Important, difference, production, laundering of fabric","Production of textiles includes","only growing cotton","spinning, weaving and finishing processes","only dyeing fabrics","only cutting threads",1],
+["Textiles: Important, difference, production, laundering of fabric","Weaving is the process of","cutting fabric only","interlacing warp and weft threads","dyeing fabric only","spinning fibres only",1],
+["Textiles: Important, difference, production, laundering of fabric","Knitting is the process of","weaving threads only","interlocking loops of yarn","dyeing fabric","cutting fabric",1],
+["Textiles: Important, difference, production, laundering of fabric","Laundering of fabric means","tearing the fabric","washing and caring for fabric properly","burning the fabric","selling the fabric",1],
+["Textiles: Important, difference, production, laundering of fabric","Laundry agents include","soap and detergent only","soap, detergent, bleach and starch","only water","only sand",1],
+["Textiles: Important, difference, production, laundering of fabric","Stages of laundering include","wearing dirty clothes","sorting, soaking, washing, rinsing and drying","only ironing","only folding",1],
+["Textiles: Important, difference, production, laundering of fabric","Sorting clothes before washing is done to","mix all colours together","separate whites from coloured clothes","waste water","damage clothes",1],
+["Textiles: Important, difference, production, laundering of fabric","Soaking helps to","damage the fabric","loosen dirt before washing","shrink the cloth","fade the colour",1],
+["Textiles: Important, difference, production, laundering of fabric","Ironing is done to","make the fabric dirty","remove wrinkles and make clothes neat","shrink the fabric","fade the colour",1],
+["Sewing machine","A sewing machine is used to","cook food","stitch fabric and materials together with thread","cut grass","wash clothes",1],
+["Sewing machine","Types of sewing machines include","hand, treadle, electric and computerized","only hand sewing","only cooking machines","only washing machines",0],
+["Sewing machine","A hand sewing machine is operated","by electricity only","by turning the handle manually","by water","by wind",1],
+["Sewing machine","A treadle sewing machine is operated","by hand only","by foot using a treadle","by electricity only","by solar power",1],
+["Sewing machine","An electric sewing machine is powered by","manual hand turning","electricity","water","wind",1],
+["Sewing machine","A computerized sewing machine is","very basic","controlled by a computer program","only for hand sewing","not used in industry",1],
+["Sewing machine","Parts of a sewing machine include","needle, presser foot, bobbin and hand wheel","only the table","only the chair","only the light",0],
+["Sewing machine","The needle of a sewing machine","cuts the fabric","pierces the fabric and forms stitches","mixes ingredients","stores thread",1],
+["Sewing machine","The presser foot","holds the fabric in place while sewing","cuts the thread","mixes food","stores patterns",0],
+["Sewing machine","The bobbin","holds the lower thread","cuts the fabric","mixes ingredients","stores electricity",0],
+["Sewing machine","The hand wheel is used to","raise and lower the needle","cut the fabric","mix ingredients","store thread",0],
+["Sewing machine","The thread tension dial","controls the tightness of the thread","cuts the fabric","mixes ingredients","stores patterns",0],
+["Sewing machine","Factors influencing choice of sewing machine include","budget, brand, type and stitches","only the colour","only the size","only the weight",0],
+["Sewing machine","Care of sewing machine includes","covering after use, cleaning and oiling","never cleaning","using it roughly","leaving it uncovered in rain",0],
+["Sewing machine","Oiling a sewing machine helps to","damage the machine","reduce friction and keep it running smoothly","make it heavy","change its colour",1],
+["Garment construction process","Terms used in garment construction include","facing, hems, openings and fastenings","cooking, cleaning and farming","driving and flying","singing and dancing",0],
+["Garment construction process","Facing in garment construction is","a finished edge on necklines and armholes","a type of thread","a kind of button","a sewing machine part",0],
+["Garment construction process","A hem in garment construction is","a type of machine","a finished edge of fabric to prevent fraying","a kind of thread only","a colour of fabric",1],
+["Garment construction process","An opening in garment construction is","a space for putting on a garment","a hole made by mistake","a type of needle","a colour of fabric",0],
+["Garment construction process","Fasteners in garment construction include","buttons, zips and hooks","only needles","only thread","only scissors",0],
+["Garment construction process","Seams in garment construction are","joints where two fabric pieces are sewn together","only decorations","only buttons","only zips",0],
+["Garment construction process","Making a simple baby dress requires","only a hammer","fabric, thread, needle and sewing machine","only glue","only paint",1],
+["Basic stitches involved in cutting and joining of crossway strip","Crossway strips are also called","straight grain strips","bias strips","warp strips","weft strips",1],
+["Basic stitches involved in cutting and joining of crossway strip","Crossway strips are cut at","a 90-degree angle only","a 45-degree angle to the grain","a straight line only","a curved line only",1],
+["Basic stitches involved in cutting and joining of crossway strip","Crossway strips are used mainly for","finishing curved edges and necklines","building houses","cooking meals","cleaning windows",0],
+["Basic stitches involved in cutting and joining of crossway strip","Joining crossway strips requires","only hand sewing without stitches","careful cutting and stitching of fabric strips","using glue only","using a hammer",1],
+["Basic stitches involved in cutting and joining of crossway strip","Steps in joining crossway strips include","cutting strips, placing right sides together and stitching","only gluing","only stapling","only tying",0],
+["Basic stitches involved in cutting and joining of crossway strip","Crossway strips are flexible because they","are cut straight","are cut on the bias","are very thick","are made of plastic",1],
+["Basic stitches involved in cutting and joining of crossway strip","Basic stitches used in crossway strip joining include","running stitch, backstitch and hemming","only cooking stitches","only farming stitches","only singing stitches",0]
+]);
+
+defBank("JSS3|Basic Science", [
+["Revision/Welcome Test","The adult human body has how many bones?","156","206","300","100",1],
+["Revision/Welcome Test","The organ that pumps blood around the body is the","lung","heart","kidney","liver",1],
+["Revision/Welcome Test","A pure substance that cannot be broken down chemically is called an","element","compound","mixture","solution",0],
+["Revision/Welcome Test","Blood vessels that carry blood away from the heart are called","veins","capillaries","arteries","nerves",2],
+["Revision/Welcome Test","Gaseous exchange in the lungs takes place in the","trachea","alveoli","larynx","nostrils",1],
+["Revision/Welcome Test","The smallest unit of matter that retains the properties of an element is the","molecule","atom","cell","compound",1],
+["Revision/Welcome Test","Which of these is a chemical change?","melting of ice","burning of wood","cutting of paper","dissolving salt",1],
+["Revision/Welcome Test","The unit of force is the","joule","newton","watt","pascal",1],
+["Atomic Structure","An atom is the smallest particle of matter that can","only exist alone","take part in a chemical reaction","never combine with others","be seen with the naked eye",1],
+["Atomic Structure","The central part of an atom is called the","shell","orbit","nucleus","electron",2],
+["Atomic Structure","Protons are found in the","electron cloud","nucleus","outer shell only","outside the atom",1],
+["Atomic Structure","Electrons carry which type of charge?","positive","negative","neutral","double",1],
+["Atomic Structure","Neutrons have","a positive charge","a negative charge","no electric charge","a double charge",2],
+["Atomic Structure","The atomic number of an element is the number of","neutrons","protons","electrons","nucleons",1],
+["Atomic Structure","The mass number of an atom is the sum of","protons and electrons","protons and neutrons","electrons and neutrons","only protons",1],
+["Atomic Structure","Electrons move around the nucleus in","straight lines","shells or energy levels","random directions","fixed blocks",1],
+["Atomic Structure","The first shell of an atom can hold a maximum of","2 electrons","8 electrons","18 electrons","32 electrons",0],
+["Atomic Structure","Isotopes are atoms of the same element with","different atomic numbers","different numbers of neutrons","different numbers of protons","different elements",1],
+["Atomic Structure","John Dalton proposed that atoms are","divisible","indivisible","always visible","only gases",1],
+["Atomic Structure","J.J. Thomson discovered the","proton","neutron","electron","nucleus",2],
+["Atomic Structure","Ernest Rutherford proposed that the atom has a","solid core","nucleus","liquid centre","gas centre",1],
+["Chemical Formula","Water is made of hydrogen and oxygen, so water is a","mixture","compound","element","suspension",1],
+["Chemical Formula","The chemical symbol for sodium is","So","S","Na","N",2],
+["Chemical Formula","The chemical symbol for iron is","Ir","Fe","I","Fn",1],
+["Chemical Formula","The chemical symbol for calcium is","Ca","C","Cl","Cu",0],
+["Chemical Formula","A chemical formula shows","only the name of the substance","the elements and number of atoms in a compound","the colour of the substance","the price of the substance",1],
+["Chemical Formula","The chemical formula for water is","HO","H2O","H2O2","OH",1],
+["Chemical Formula","The chemical formula for common salt is","NaCl","NaCO3","NaHCO3","Na2CO3",0],
+["Chemical Formula","Valency is the","combining power of an element","colour of an element","density of an element","melting point of an element",0],
+["Chemical Formula","A radical is a","group of atoms that behaves as a single unit","single atom only","type of molecule","type of compound",0],
+["Chemical Formula","The valency of chlorine is","1","2","3","4",0],
+["Chemical Formula","The valency of oxygen is","1","2","3","4",1],
+["Chemical Formula","The valency of nitrogen is","1","2","3","5",3],
+["Simple Chemical equation","The substances that react in a chemical equation are called","products","reactants","catalysts","solvents",1],
+["Simple Chemical equation","The substances formed in a chemical equation are called","reactants","products","catalysts","solvents",1],
+["Simple Chemical equation","A balanced chemical equation has","more reactants than products","equal atoms of each element on both sides","only products on the left","no coefficients",1],
+["Simple Chemical equation","The arrow in a chemical equation shows","the direction of the reaction","only heat","only pressure","the colour change",0],
+["Simple Chemical equation","Coefficients in a chemical equation show","the number of molecules","the colour","the temperature","the pressure",0],
+["Simple Chemical equation","Subscripts in a chemical formula show","the number of atoms of each element","the temperature","the pressure","the colour",0],
+["Simple Chemical equation","The law of conservation of mass states that","matter can be created","matter can be destroyed","matter is neither created nor destroyed","matter always increases",2],
+["Simple Chemical equation","An example of a simple chemical equation is","2H2 + O2 → 2H2O","H2O → H2 + O2","2H2 → H2O","O2 → H2O",0],
+["Nervous system","The nervous system is divided into CNS and PNS. CNS stands for","Central Nerve System","Central Nervous System","Circulatory Nerve System","Cranial Nerve System",1],
+["Nervous system","The brain and spinal cord form part of the","Peripheral Nervous System","Central Nervous System","Autonomic System","Somatic System only",1],
+["Nervous system","The Peripheral Nervous System (PNS) consists of","brain and spinal cord","nerves outside the brain and spinal cord","only the heart","only the lungs",1],
+["Nervous system","A reflex action is","a slow and thoughtful response","a quick automatic response to a stimulus","only a voluntary movement","a type of disease",1],
+["Nervous system","The part of the neuron that carries impulses away from the cell body is the","dendrite","axon","cell body","nucleus",1],
+["Nervous system","The part of the neuron that receives impulses is the","axon","dendrite","cell body","nucleus",1],
+["Nervous system","Cerebrospinal fluid protects the","heart and lungs","brain and spinal cord","liver and kidneys","stomach and intestines",1],
+["Nervous system","Voluntary actions are controlled by the","spinal cord only","cerebrum of the brain","heart","lungs",1],
+["Nervous system","Involuntary actions include","walking and talking","breathing and heartbeat","writing and reading","drawing and painting",1],
+["Nervous system","Sensory neurons carry impulses","from receptors to the brain","from the brain to muscles","only within the brain","only within the spinal cord",0],
+["Nervous system","Motor neurons carry impulses","from the brain to muscles or glands","from receptors to the brain","only within the skin","only within the bones",0],
+["Endocrine System","The endocrine system is made up of glands that secrete","enzymes only","hormones directly into the blood","sweat only","digestive juices",1],
+["Endocrine System","Which gland is known as the master gland?","Thyroid gland","Pituitary gland","Adrenal gland","Pancreas",1],
+["Endocrine System","Insulin is produced by the","liver","pancreas","heart","lungs",1],
+["Endocrine System","The thyroid gland produces hormones that control","only growth","metabolism and growth","only digestion","only sleep",1],
+["Endocrine System","Adrenaline is produced by the","thyroid gland","adrenal gland","pituitary gland","pancreas",1],
+["Endocrine System","Hormones are chemical messengers transported by the","digestive system","bloodstream","nervous system","respiratory system",1],
+["Endocrine System","The pancreas produces insulin and","bile only","glucagon","urine only","sweat only",1],
+["Endocrine System","A deficiency of insulin causes","diabetes mellitus","malaria","typhoid","asthma",0],
+["Endocrine System","The pituitary gland produces growth hormone which controls","only height","growth and development","only weight","only hair colour",1],
+["Endocrine System","Ductless glands are also called","exocrine glands","endocrine glands","mixed glands","salivary glands",1]
+]);
+
+defBank("JSS3|Computer", [
+["Revision/Welcome Test","A computer is an electronic machine that","cooks food","accepts data, processes it and gives out information","stores only music","works without input",1],
+["Revision/Welcome Test","ICT stands for","Internet and Computer Teaching","Information and Communication Technology","International College of Technology","Input Control Terminal",1],
+["Revision/Welcome Test","Which of these is an output device?","Keyboard","Scanner","Mouse","Printer",3],
+["Revision/Welcome Test","Data is","processed and meaningful information","raw facts that have not been processed","only the final result","a computer program",1],
+["Revision/Welcome Test","The brain of the computer is the","monitor","CPU","keyboard","printer",1],
+["Revision/Welcome Test","Which of these is a storage device?","Monitor","Keyboard","Hard disk","Scanner",2],
+["Revision/Welcome Test","Software is","the physical parts of a computer","a set of instructions that tells the hardware what to do","electricity","a cable",1],
+["Revision/Welcome Test","The Internet is a","single computer","a global network of computers","a type of software","a computer part",1],
+["Information technology: Internet","The Internet is a","single computer in a room","global network of connected computers","type of computer virus","computer program only",1],
+["Information technology: Internet","Examples of search engines include","Google, Yahoo, Bing","Microsoft Word, Excel","Printer, Scanner","Monitor, Keyboard",0],
+["Information technology: Internet","Search engines are used to","cook food","search for information on the Internet","print documents","repair computers",1],
+["Information technology: Internet","A website address is called a","URL","CPU","RAM","URL only",0],
+["Information technology: Internet","WWW stands for","World Wide Web","Whole Wide Web","Web World Wide","World Web Wide",0],
+["Information technology: Internet","Email stands for","Electronic Mail","Electric Mail","Email Message","Easy Mail",0],
+["Information technology: Internet","To send an email, you need","an email address and internet connection","only a computer","only a phone","only a printer",0],
+["Information technology: Internet","A browser is used to","write letters","browse and view websites","play music only","scan documents",1],
+["Information technology: Internet","Examples of web browsers include","Google Chrome, Mozilla Firefox","Microsoft Word, Excel","Printer, Scanner","Monitor, Keyboard",0],
+["Information technology: Internet","Downloading means","sending data from your computer","receiving data from the Internet to your computer","deleting files","printing files",1],
+["Information technology: Internet","Uploading means","receiving data from the Internet","sending data from your computer to the Internet","deleting files","printing files",1],
+["Information technology: Internet","A modem is used to","print documents","connect a computer to the Internet","scan documents","type letters",1],
+["Information technology: Internet","Wi-Fi allows","wired connection only","wireless Internet connection","only printing","only scanning",1],
+["Information technology: Internet","Cybercrime is","legal activity online","illegal activity using computers and the Internet","only emailing","only browsing",1],
+["Information technology: Internet","One benefit of the Internet is","only entertainment","access to information and communication","only games","only shopping",1],
+["Digital Divide","Digital divide refers to","the gap between those with and without access to digital technology","the difference in computer sizes","the speed of the Internet","the price of computers",0],
+["Digital Divide","The old economy is","digital and knowledge based","time consuming, labour based and mechanical","only about farming","the same as the new economy",1],
+["Digital Divide","The new economy is","labour based and slow","digital, knowledge based and time/space irrelevant","only for rich countries","the same as barter trade",1],
+["Digital Divide","One limitation of the old economy is that it","is very fast","is time-consuming and labour-based","is digital only","needs no labour",1],
+["Digital Divide","One benefit of the new economy is that it","requires more time","lowers capital and creates jobs","is slower","needs more manual work",1],
+["Digital Divide","The digital divide can be bridged by","ignoring technology","providing access to computers and the Internet","banning computers","destroying phones",1],
+["Digital Divide","People affected by the digital divide include","only rich people","those without access to digital technology","only computer scientists","only government workers",1],
+["Digital Divide","Digital divide affects","only education","education, business and social life","only farming","only sports",1],
+["Digital Divide","The old economy relied mainly on","digital tools","manual and mechanical tools","only the Internet","only smartphones",1],
+["Digital Divide","The new economy relies mainly on","manual tools","digital technology and the Internet","only paper","only pens",1],
+["Digital Literacy","Digital literacy is the ability to","repair all computer hardware","use digital tools to find, evaluate and create information","write computer programs only","never use the Internet",1],
+["Digital Literacy","Digital literacy is important in education because it","makes learning slower","helps students access and use digital information","replaces teachers completely","is only for computer scientists",1],
+["Digital Literacy","A digitally literate person can","only play games","search for information online responsibly","only type","only print",1],
+["Digital Literacy","Digital literacy skills include","only typing","searching, evaluating and creating digital content","only gaming","only printing",1],
+["Digital Literacy","Digital literacy helps in the workforce by","reducing job opportunities","improving productivity and communication","only increasing laziness","only replacing workers",1],
+["Digital Literacy","Being digitally literate means you can","only use one app","use various digital tools and the Internet","only play games","only type documents",1],
+["Digital Literacy","One risk of digital illiteracy is","better job opportunities","difficulty accessing online information","only faster work","only more income",1],
+["Digital Literacy","Digital literacy promotes","only entertainment","lifelong learning and participation in a digital society","only laziness","only isolation",1],
+["Digital Literacy","A digitally literate citizen can","only use social media","participate in online governance and services","only play games","only watch videos",1],
+["Database","A database is","a type of computer game","a collection of related data stored together","an output device","a printing machine",0],
+["Database","Database terminologies include","fields, records, files and keys","only monitors and keyboards","only printers","only speakers",0],
+["Database","A field in a database is","a single piece of data","the whole database","only a report","only a form",0],
+["Database","A record in a database is","a single field","a collection of related fields about one item","only a table","only a query",1],
+["Database","A file in a database is","a collection of records","a single field","only a report","only a form",0],
+["Database","A key in a database is","a field that uniquely identifies each record","a physical key","only a password","only a username",0],
+["Database","Forms of database include","flat file, hierarchical and relational","only flat file","only hierarchical","only relational",0],
+["Database","A flat file database stores data in","a single table","multiple related tables","only paper","only pictures",0],
+["Database","A relational database stores data in","one table only","multiple related tables","only paper","only pictures",1],
+["Database","Examples of database software include","MS Access, MySQL","Microsoft Word, Excel","Printer, Scanner","Monitor, Keyboard",0],
+["Database","A query in a database is used to","print documents","retrieve specific data","delete the database","create a form",1],
+["Database","A form in a database is used to","delete data","enter data into the database","print reports","create queries",1],
+["Database","A report in a database is used to","delete data","present formatted data for printing","enter data","create queries",1],
+["Spread Sheet","A spreadsheet is used to","organize, analyze and store data in rows and columns","draw pictures only","play music only","type letters only",0],
+["Spread Sheet","Examples of spreadsheet packages include","Microsoft Excel","Facebook, WhatsApp","Printer, Scanner","Monitor, Keyboard",0],
+["Spread Sheet","In a spreadsheet, data is arranged in","rows and columns","circles and squares","only one cell","only text",0],
+["Spread Sheet","A cell in a spreadsheet is","the intersection of a row and column","only a row","only a column","only a sheet",0],
+["Spread Sheet","A row in a spreadsheet runs","horizontally","vertically","diagonally","in circles",0],
+["Spread Sheet","A column in a spreadsheet runs","horizontally","vertically","diagonally","in circles",1],
+["Spread Sheet","A worksheet is","a single page in a spreadsheet","the whole workbook","only a chart","only a formula",0],
+["Spread Sheet","A workbook contains","only one worksheet","one or more worksheets","only charts","only formulas",1],
+["Spread Sheet","A formula in Excel starts with","=","#","$","%",0],
+["Spread Sheet","The SUM function adds","only one cell","a range of cells","only text","only pictures",1],
+["Spread Sheet","Charts in spreadsheets are used to","delete data","visualize data graphically","print only","type only",1],
+["Spread Sheet","Sorting in a spreadsheet is used to","delete data","arrange data in a specific order","print data","type data",1]
+]);
+// BANK_DATA_END
+
+function bankKey(cls, subj) { return cls + "|" + subj; }
+
+function bankFor(cls, subj) { return BANKS[bankKey(cls, subj)]; }
+
+function bankAvailable(cls, subj) {
+  var b = bankFor(cls, subj);
+  return !!(b && b.length >= TOTAL_QUESTIONS);
+}
+
+// Pick TOTAL_QUESTIONS randomly, spread evenly across the topics in the bank
+function pickQuestions(pool, n) {
+  var byTopic = {};
+  var order = [];
+  pool.forEach(function (q) {
+    if (!byTopic[q.t]) { byTopic[q.t] = []; order.push(q.t); }
+    byTopic[q.t].push(q);
+  });
+  order.forEach(function (k) { shuffleArray(byTopic[k]); });
+  var queues = order.map(function (k) { return byTopic[k]; });
+  var out = [];
+  var guard = 0;
+  while (out.length < n && guard < 10000) {
+    guard++;
+    var progressed = false;
+    for (var qi = 0; qi < queues.length; qi++) {
+      if (out.length >= n) break;
+      if (queues[qi].length) { out.push(queues[qi].shift()); progressed = true; }
+    }
+    if (!progressed) break;
+  }
+  shuffleArray(out);
+  return out;
+}
+
+// ===================== APP STATE =====================
+let selectedQuestions = [];
+let currentPage = 0;
+let studentName = "";
+let studentClass = "";
+let studentSubject = "";
+let answers = {};          // {questionIndex: "A"|"B"|"C"|"D"}
+let timerInterval = null;
+let timeLeft = EXAM_MINUTES * 60;
+let startTime = null;
+let examFinished = false;
+
+// ===================== START SCREEN LOGIC =====================
+function onClassChange() {
+  var cls = document.getElementById("studentClass").value;
+  var sel = document.getElementById("studentSubject");
+  sel.innerHTML = '<option value="">-- Select Subject --</option>';
+  if (cls && CURRICULUM[cls]) {
+    CURRICULUM[cls].forEach(function (subj) {
+      var opt = document.createElement("option");
+      opt.value = subj;
+      opt.textContent = bankAvailable(cls, subj) ? subj : subj + " (Questions not set yet)";
+      sel.appendChild(opt);
+    });
+  }
+  onSubjectChange();
+}
+
+function onSubjectChange() {
+  var cls = document.getElementById("studentClass").value;
+  var subj = document.getElementById("studentSubject").value;
+  var notice = document.getElementById("subjectNotice");
+  var startBtn = document.getElementById("startBtn");
+  var ready = !!(cls && subj && bankAvailable(cls, subj));
+
+  if (cls && subj && !ready) {
+    notice.style.display = "block";
+    notice.textContent = "Questions for " + subj + " (" + cls + ") have not been set yet. Please select another subject or class.";
+  } else {
+    notice.style.display = "none";
+  }
+  startBtn.disabled = !ready;
+}
+
+// ===================== INITIALISATION =====================
+function startQuiz() {
+  studentName = document.getElementById("studentName").value.trim();
+  studentClass = document.getElementById("studentClass").value;
+  studentSubject = document.getElementById("studentSubject").value;
+
+  if (!studentName) { alert("Please enter your full name."); return; }
+  if (!studentClass) { alert("Please select your class."); return; }
+  if (!studentSubject) { alert("Please select your subject."); return; }
+  if (!bankAvailable(studentClass, studentSubject)) {
+    alert("Questions for this subject have not been set yet.");
+    return;
+  }
+
+  var pool = bankFor(studentClass, studentSubject).slice();
+  selectedQuestions = pickQuestions(pool, TOTAL_QUESTIONS);
+
+  currentPage = 0;
+  answers = {};
+  timeLeft = EXAM_MINUTES * 60;
+  examFinished = false;
+  startTime = new Date();
+
+  document.getElementById("startScreen").classList.remove("active");
+  document.getElementById("quizScreen").classList.add("active");
+
+  document.getElementById("sidebarSubject").textContent = studentSubject;
+  document.getElementById("sidebarClass").textContent = "Class: " + studentClass;
+  document.getElementById("scoreTotal").textContent = "/ " + TOTAL_QUESTIONS;
+
+  renderPage();
+  renderQuestionNav();
+  startTimer();
+  saveExamState();
+}
+
+// Shuffle array in place
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ===================== TIMER =====================
+function startTimer() {
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      submitQuiz(true); // auto submit
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const mins = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+  const secs = (timeLeft % 60).toString().padStart(2, "0");
+  const display = document.getElementById("timerDisplay");
+  display.textContent = `${mins}:${secs}`;
+  if (timeLeft <= 60) display.classList.add("warning");
+}
+
+// ===================== RENDER FUNCTIONS =====================
+function renderPage() {
+  const container = document.getElementById("questionsContainer");
+  container.innerHTML = "";
+
+  const startIdx = currentPage * QUESTIONS_PER_PAGE;
+  const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, selectedQuestions.length);
+
+  document.getElementById("progressText").textContent =
+    `Questions ${startIdx + 1} \u2013 ${endIdx} of ${selectedQuestions.length}`;
+
+  updateSidebarActiveState();
+
+  const letters = ["A", "B", "C", "D"];
+  for (let i = startIdx; i < endIdx; i++) {
+    const q = selectedQuestions[i];
+    const card = document.createElement("div");
+    card.className = "question-card";
+
+    let optionsHTML = "";
+    q.o.forEach((opt, idx) => {
+      const letter = letters[idx];
+      const checked = answers[i] === letter ? "checked" : "";
+      optionsHTML += `
+        <label>
+          <input type="radio" name="q${i}" value="${letter}" ${checked}
+                 onchange="saveAnswer(${i}, '${letter}')">
+          ${letter}. ${opt}
+        </label>`;
+    });
+
+    card.innerHTML = `
+      <span class="q-topic">${q.t}</span>
+      <h3>Q${i + 1}. ${q.q}</h3>
+      <div class="options">${optionsHTML}</div>
+    `;
+    container.appendChild(card);
+  }
+
+  document.getElementById("prevBtn").disabled = currentPage === 0;
+  const isLastPage = endIdx >= selectedQuestions.length;
+  document.getElementById("nextBtn").style.display = isLastPage ? "none" : "inline-block";
+  document.getElementById("submitBtn").style.display = isLastPage ? "inline-block" : "none";
+}
+
+function updateSidebarActiveState() {
+  const navButtons = document.querySelectorAll(".question-nav button");
+  const startIdx = currentPage * QUESTIONS_PER_PAGE;
+  const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, selectedQuestions.length);
+
+  selectedQuestions.forEach((_, i) => {
+    if (i >= navButtons.length) return;
+    const btn = navButtons[i];
+    btn.classList.toggle("active", answers[i] !== undefined);
+    btn.classList.toggle("current", i >= startIdx && i < endIdx);
+  });
+}
+
+function renderQuestionNav() {
+  const navContainer = document.getElementById("questionNav");
+  navContainer.innerHTML = "";
+
+  selectedQuestions.forEach((_, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = i + 1;
+    btn.onclick = () => goToQuestion(i);
+    if (answers[i] !== undefined) btn.classList.add("active");
+    navContainer.appendChild(btn);
+  });
+
+  updateSidebarActiveState();
+}
+
+function goToQuestion(questionIndex) {
+  const targetPage = Math.floor(questionIndex / QUESTIONS_PER_PAGE);
+  if (targetPage !== currentPage) {
+    currentPage = targetPage;
+    renderPage();
+    saveExamState();
+  }
+  window.scrollTo(0, 0);
+}
+
+// ===================== ANSWER HANDLING =====================
+function saveAnswer(qIndex, letter) {
+  answers[qIndex] = letter;
+  const navButtons = document.querySelectorAll(".question-nav button");
+  if (navButtons[qIndex]) {
+    navButtons[qIndex].classList.add("active");
+  }
+  saveExamState();
+}
+
+function nextPage() {
+  const startIdx = currentPage * QUESTIONS_PER_PAGE;
+  const endIdx = Math.min(startIdx + QUESTIONS_PER_PAGE, selectedQuestions.length);
+
+  for (let i = startIdx; i < endIdx; i++) {
+    if (!answers[i]) {
+      if (!confirm("You have not answered all questions on this page. Continue anyway?")) {
+        return;
+      }
+      break;
+    }
+  }
+
+  currentPage++;
+  renderPage();
+  window.scrollTo(0, 0);
+  saveExamState();
+}
+
+function prevPage() {
+  if (currentPage > 0) {
+    currentPage--;
+    renderPage();
+    window.scrollTo(0, 0);
+    saveExamState();
+  }
+}
+
+function submitQuiz(isTimeout = false) {
+  if (examFinished) return;
+  examFinished = true;
+  clearInterval(timerInterval);
+  clearExamState();
+
+  let score = 0;
+  const LETTERS = ["A", "B", "C", "D"];
+  selectedQuestions.forEach((q, i) => {
+    if (answers[i] === LETTERS[q.c]) score++;
+  });
+
+  const endTime = new Date();
+  const timeSpentSec = Math.floor((endTime - startTime) / 1000);
+  const mins = Math.floor(timeSpentSec / 60);
+  const secs = timeSpentSec % 60;
+  const timeSpentStr = `${mins} min ${secs} sec`;
+
+  document.getElementById("quizScreen").classList.remove("active");
+  document.getElementById("resultsScreen").classList.add("active");
+
+  const total = selectedQuestions.length;
+  const pct = total ? score / total : 0;
+  const scoreCircle = document.getElementById("scoreCircle");
+  document.getElementById("scoreValue").textContent = score;
+  if (pct >= 0.6) scoreCircle.className = "score-circle";
+  else if (pct >= 0.4) scoreCircle.className = "score-circle medium";
+  else scoreCircle.className = "score-circle low";
+
+  document.getElementById("resultDetails").innerHTML = `
+    <p><strong>Name:</strong> ${studentName}</p>
+    <p><strong>Class:</strong> ${studentClass}</p>
+    <p><strong>Subject:</strong> ${studentSubject}</p>
+    <p><strong>Score:</strong> ${score} / ${total}</p>
+    <p><strong>Percentage:</strong> ${(pct * 100).toFixed(1)}%</p>
+    <p><strong>Time Spent:</strong> ${timeSpentStr}</p>
+    <p><strong>Date:</strong> ${endTime.toLocaleString()}</p>
+    ${isTimeout ? "<p style='color:#dc3545;'><strong>Note:</strong> Time expired &ndash; exam auto-submitted.</p>" : ""}
+  `;
+
+  saveResultToFirestore({
+    name: studentName,
+    class: studentClass,
+    subject: studentSubject,
+    score: score,
+    total: total,
+    timeSpent: timeSpentStr,
+    date: endTime.toLocaleString()
+  });
+}
+
+function csvEscape(value) {
+  const s = value === undefined || value === null ? "" : String(value);
+  if (s.indexOf(",") !== -1 || s.indexOf('"') !== -1 || s.indexOf("\n") !== -1) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+// ===================== FIRESTORE RESULTS =====================
+async function saveResultToFirestore(record) {
+  const rec = { ...record, createdAt: new Date().toISOString(), synced: navigator.onLine };
+  try {
+    if (navigator.onLine) {
+      await db.collection(RESULTS_COLL).add(rec);
+    } else {
+      offlineQueue.push(rec);
+      saveOfflineQueue();
+    }
+  } catch (e) {
+    offlineQueue.push(rec);
+    saveOfflineQueue();
+  }
+  try {
+    let all = JSON.parse(localStorage.getItem("examResults") || "[]");
+    if (!Array.isArray(all)) all = [];
+    all.push(rec);
+    localStorage.setItem("examResults", JSON.stringify(all));
+  } catch (e) {}
+}
+
+function exportResultsCSV() {
+  let all = [];
+  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
+  const clsFilter = document.getElementById("adminClassFilter").value;
+  const data = clsFilter ? all.filter(function (r) { return r.class === clsFilter; }) : all;
+  const header = "Name,Class,Subject,Score,Total,Time Spent,Date";
+  const rows = data.map(function (r) {
+    return [csvEscape(r.name), csvEscape(r.class), csvEscape(r.subject), csvEscape(r.score), csvEscape(r.total), csvEscape(r.timeSpent), csvEscape(r.date)].join(",");
+  });
+  downloadResultFile(header + "\n" + rows.join("\n") + "\n", "Exam_Results_" + (clsFilter || "all"));
+}
+
+function printResults() {
+  const clsFilter = document.getElementById("adminClassFilter").value;
+  let all = [];
+  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
+  const data = clsFilter ? all.filter(function (r) { return r.class === clsFilter; }) : all;
+  var win = window.open("", "_blank");
+  var html = "<html><head><title>Exam Results</title><style>body{font-family:sans-serif;padding:20px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:6px;text-align:left;}th{background:#1e3c72;color:#fff;}h1{color:#1e3c72;}</style></head><body><h1>Exam Results" + (clsFilter ? " - " + clsFilter : "") + "</h1><table><tr><th>Name</th><th>Class</th><th>Subject</th><th>Score</th><th>Total</th><th>Time</th><th>Date</th></tr>";
+  data.forEach(function (r) {
+    html += "<tr><td>" + r.name + "</td><td>" + r.class + "</td><td>" + r.subject + "</td><td>" + r.score + "</td><td>" + r.total + "</td><td>" + r.timeSpent + "</td><td>" + r.date + "</td></tr>";
+  });
+  html += "</table><scr" + "ipt>window.print();</scr" + "ipt></body></html>";
+  win.document.write(html);
+  win.document.close();
+}
+
+async function renderResultsTable() {
+  var container = document.getElementById("adminResultsContainer");
+  var emptyMsg = document.getElementById("adminEmptyMsg");
+  var all = [];
+  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
+  var clsFilter = document.getElementById("adminClassFilter").value;
+  var data = clsFilter ? all.filter(function (r) { return r.class === clsFilter; }) : all;
+  container.innerHTML = "";
+  if (data.length === 0) { container.appendChild(emptyMsg); return; }
+  var tbl = document.createElement("table");
+  tbl.className = "admin-table";
+  var rowsHtml = data.map(function (r) {
+    var pct = r.total ? (r.score / r.total * 100).toFixed(1) : 0;
+    return "<tr><td>" + r.name + "</td><td>" + r.class + "</td><td>" + r.subject + "</td><td>" + r.score + "</td><td>" + r.total + "</td><td>" + pct + "</td><td>" + r.timeSpent + "</td><td>" + r.date + "</td></tr>";
+  }).join("");
+  tbl.innerHTML = "<thead><tr><th>Name</th><th>Class</th><th>Subject</th><th>Score</th><th>Total</th><th>%</th><th>Time</th><th>Date</th></tr></thead><tbody>" + rowsHtml + "</tbody>";
+  container.appendChild(tbl);
+}
+
+// ===================== OFFLINE / ONLINE SYNC =====================
+window.addEventListener("online", function () {
+  syncOfflineQueue();
+});
+
+// ===================== EXAM STATE PERSISTENCE (survives refresh) =====================
+function saveExamState() {
+  try {
+    localStorage.setItem("cbtExamState", JSON.stringify({
+      studentName: studentName,
+      studentClass: studentClass,
+      studentSubject: studentSubject,
+      selectedQuestions: selectedQuestions,
+      currentPage: currentPage,
+      answers: answers,
+      startTime: startTime ? startTime.getTime() : null,
+      deadline: startTime ? startTime.getTime() + EXAM_MINUTES * 60 * 1000 : null,
+      examFinished: examFinished,
+      TOTAL_QUESTIONS: TOTAL_QUESTIONS,
+      EXAM_MINUTES: EXAM_MINUTES
+    }));
+  } catch (e) {}
+}
+function clearExamState() {
+  try { localStorage.removeItem("cbtExamState"); } catch (e) {}
+}
+function restoreExamState() {
+  try {
+    var raw = localStorage.getItem("cbtExamState");
+    if (!raw) return false;
+    var st = JSON.parse(raw);
+    if (!st || st.examFinished) return false;
+
+    studentName = st.studentName || "";
+    studentClass = st.studentClass || "";
+    studentSubject = st.studentSubject || "";
+    selectedQuestions = st.selectedQuestions || [];
+    currentPage = st.currentPage || 0;
+    answers = st.answers || {};
+    var now = Date.now();
+    timeLeft = st.deadline ? Math.max(0, Math.floor((st.deadline - now) / 1000)) : EXAM_MINUTES * 60;
+    startTime = st.startTime ? new Date(st.startTime) : null;
+    examFinished = st.examFinished || false;
+
+    if (timeLeft <= 0) {
+      document.getElementById("startScreen").classList.remove("active");
+      document.getElementById("quizScreen").classList.add("active");
+      submitQuiz(true);
+      return true;
+    }
+
+    document.getElementById("studentName").value = studentName;
+    document.getElementById("studentClass").value = studentClass;
+
+    document.getElementById("startScreen").classList.remove("active");
+    document.getElementById("quizScreen").classList.add("active");
+    document.getElementById("sidebarSubject").textContent = studentSubject;
+    document.getElementById("sidebarClass").textContent = "Class: " + studentClass;
+    document.getElementById("scoreTotal").textContent = "/ " + TOTAL_QUESTIONS;
+
+    renderPage();
+    renderQuestionNav();
+    startTimer();
+    return true;
+  } catch (e) {
+    console.error("restore exam state failed", e);
+    return false;
+  }
+}
+
+// ===================== ADMIN =====================
+function saveAdminConfig() {
+  var tq = parseInt(document.getElementById("adminTotalQuestions").value, 10) || 10;
+  var em = parseInt(document.getElementById("adminExamMinutes").value, 10) || 5;
+  if (tq < 1) tq = 10;
+  if (em < 1) em = 5;
+  TOTAL_QUESTIONS = tq;
+  EXAM_MINUTES = em;
+  saveConfig();
+  updateConfigDisplay();
+  alert("Settings saved: " + TOTAL_QUESTIONS + " questions, " + EXAM_MINUTES + " minutes");
+}
+
+onClassChange();
+restoreExamState();
+</script>
+</body>
+</html>
