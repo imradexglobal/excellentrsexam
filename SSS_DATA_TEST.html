@@ -266,6 +266,7 @@
       </div>
       <div class="nav-buttons" style="justify-content:center;">
         <button class="btn btn-secondary" onclick="location.reload()">Take Another Exam</button>
+        <button class="btn btn-success" onclick="showReview()">Review Answers</button>
         <button class="btn" onclick="openAdminLogin()">Admin Login</button>
       </div>
     </div>
@@ -327,6 +328,26 @@
       <p id="adminEmptyMsg" style="color:#666;">No results yet.</p>
     </div>
     <div id="adminSyncStatus" style="margin-top:10px;font-size:0.8rem;color:#28a745;"></div>
+  </div>
+
+  <!-- REVIEW SCREEN (student) -->
+  <div id="reviewScreen" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="color:#1e3c72;">Answer Review</h2>
+      <button class="btn btn-secondary" onclick="hideReview()">Back to Results</button>
+    </div>
+    <div id="reviewSummary" style="margin-bottom:12px;font-weight:600;color:#1e3c72;"></div>
+    <div id="reviewContainer"></div>
+  </div>
+
+  <!-- ADMIN DETAIL SCREEN -->
+  <div id="adminDetailScreen" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="color:#1e3c72;">Student Answer Detail</h2>
+      <button class="btn btn-secondary" onclick="closeAdminDetail()">Back to Results</button>
+    </div>
+    <div id="adminDetailInfo" style="margin-bottom:12px;"></div>
+    <div id="adminDetailContainer"></div>
   </div>
 
   <footer>
@@ -1639,7 +1660,16 @@ function csvEscape(value) {
 
 // ===================== FIRESTORE RESULTS =====================
 async function saveResultToFirestore(record) {
-  const rec = { ...record, createdAt: new Date().toISOString(), synced: navigator.onLine };
+  const rec = { 
+    ...record, 
+    uid: "r"+Date.now()+"-"+Math.random().toString(36).slice(2,8),
+    selectedQuestions: selectedQuestions,
+    answers: answers,
+    totalQuestions: TOTAL_QUESTIONS,
+    examMinutes: EXAM_MINUTES,
+    createdAt: new Date().toISOString(), 
+    synced: navigator.onLine 
+  };
   try {
     if (navigator.onLine) {
       await db.collection(RESULTS_COLL).add(rec);
@@ -1692,15 +1722,17 @@ async function renderResultsTable() {
   var all = [];
   try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
   var clsFilter = document.getElementById("adminClassFilter").value;
-  var data = clsFilter ? all.filter(function (r) { return r.class === clsFilter; }) : all;
   container.innerHTML = "";
+  var data = all.filter(function (r) { return !clsFilter || r.class === clsFilter; });
   if (data.length === 0) { container.appendChild(emptyMsg); return; }
   var tbl = document.createElement("table");
   tbl.className = "admin-table";
-  var rowsHtml = data.map(function (r) {
+  var rowsHtml = "";
+  all.forEach(function (r, ai) {
+    if (clsFilter && r.class !== clsFilter) return;
     var pct = r.total ? (r.score / r.total * 100).toFixed(1) : 0;
-    return "<tr><td>" + r.name + "</td><td>" + r.class + "</td><td>" + r.subject + "</td><td>" + r.score + "</td><td>" + r.total + "</td><td>" + pct + "</td><td>" + r.timeSpent + "</td><td>" + r.date + "</td></tr>";
-  }).join("");
+    rowsHtml += "<tr onclick=\"openAdminDetail(" + ai + ")\" style='cursor:pointer;'><td>" + r.name + "</td><td>" + r.class + "</td><td>" + r.subject + "</td><td>" + r.score + "</td><td>" + r.total + "</td><td>" + pct + "</td><td>" + r.timeSpent + "</td><td>" + r.date + "</td></tr>";
+  });
   tbl.innerHTML = "<thead><tr><th>Name</th><th>Class</th><th>Subject</th><th>Score</th><th>Total</th><th>%</th><th>Time</th><th>Date</th></tr></thead><tbody>" + rowsHtml + "</tbody>";
   container.appendChild(tbl);
 }
@@ -1787,6 +1819,82 @@ function saveAdminConfig() {
   updateConfigDisplay();
   alert("Settings saved: " + TOTAL_QUESTIONS + " questions, " + EXAM_MINUTES + " minutes");
 }
+
+// ===================== STUDENT REVIEW =====================
+function showReview() {
+  document.getElementById("resultsScreen").classList.remove("active");
+  document.getElementById("reviewScreen").classList.add("active");
+  var LETTERS = ["A", "B", "C", "D"];
+  var score = 0;
+  var total = selectedQuestions.length;
+  selectedQuestions.forEach(function (q, i) { if (answers[i] === LETTERS[q.c]) score++; });
+  document.getElementById("reviewSummary").textContent = "You scored " + score + " / " + total;
+  var html = "";
+  selectedQuestions.forEach(function (q, i) {
+    var studentAns = answers[i];
+    var correctLetter = LETTERS[q.c];
+    var isCorrect = studentAns === correctLetter;
+    html += '<div class="question-card" style="margin-bottom:14px;">';
+    html += '<span class="q-topic">' + q.t + '</span>';
+    html += '<h3 style="margin-bottom:10px;">Q' + (i + 1) + '. ' + q.q + ' <span style="font-weight:normal;color:' + (isCorrect ? '#28a745' : '#dc3545') + ';">' + (isCorrect ? '\u2713 Correct' : '\u2717 Wrong') + '</span></h3>';
+    html += '<div class="options">';
+    q.o.forEach(function (opt, idx) {
+      var letter = LETTERS[idx];
+      var cls = "";
+      if (letter === correctLetter) cls = "style='border-color:#28a745;background:#e7ffe7;color:#28a745;'"; else if (studentAns === letter && letter !== correctLetter) cls = "style='border-color:#dc3545;background:#ffe7e7;color:#dc3545;'";
+      html += '<label ' + cls + '><input type="radio" disabled ' + (studentAns === letter ? 'checked' : '') + '> ' + letter + '. ' + opt + '</label>';
+    });
+    html += '</div>';
+    if (!isCorrect) html += '<div style="margin-top:6px;color:#28a745;font-weight:600;font-size:0.9rem;">Correct answer: ' + correctLetter + '. ' + q.o[q.c] + '</div>';
+    html += '</div>';
+  });
+  document.getElementById("reviewContainer").innerHTML = html;
+}
+function hideReview() {
+  document.getElementById("reviewScreen").classList.remove("active");
+  document.getElementById("resultsScreen").classList.add("active");
+}
+
+// ===================== ADMIN DETAIL =====================
+function openAdminDetail(idx) {
+  var all = [];
+  try { all = JSON.parse(localStorage.getItem("examResults") || "[]"); if (!Array.isArray(all)) all = []; } catch (e) { all = []; }
+  var rec = all[idx];
+  if (!rec) return;
+  document.getElementById("adminScreen").classList.remove("active");
+  document.getElementById("adminDetailScreen").classList.add("active");
+  var LETTERS = ["A", "B", "C", "D"];
+  var sq = rec.selectedQuestions || [];
+  var ans = rec.answers || {};
+  var score = 0;
+  sq.forEach(function (q, i) { if (ans[i] === LETTERS[q.c]) score++; });
+  document.getElementById("adminDetailInfo").innerHTML = '<strong>Name:</strong> ' + rEsc(rec.name) + ' | <strong>Class:</strong> ' + rEsc(rec.class) + ' | <strong>Subject:</strong> ' + rEsc(rec.subject) + ' | <strong>Score:</strong> ' + score + ' / ' + sq.length + ' | <strong>Date:</strong> ' + rEsc(rec.date);
+  var html = "";
+  sq.forEach(function (q, i) {
+    var studentAns = ans[i];
+    var correctLetter = LETTERS[q.c];
+    var isCorrect = studentAns === correctLetter;
+    html += '<div class="question-card" style="margin-bottom:10px;">';
+    html += '<span class="q-topic">' + q.t + '</span>';
+    html += '<h3 style="margin-bottom:8px;">Q' + (i + 1) + '. ' + q.q + '</h3>';
+    html += '<div class="options">';
+    q.o.forEach(function (opt, idx) {
+      var letter = LETTERS[idx];
+      var cls = "";
+      if (letter === correctLetter) cls = "style='border-color:#28a745;background:#e7ffe7;color:#28a745;'"; else if (studentAns === letter && letter !== correctLetter) cls = "style='border-color:#dc3545;background:#ffe7e7;color:#dc3545;'";
+      html += '<label ' + cls + '><input type="radio" disabled ' + (studentAns === letter ? 'checked' : '') + '> ' + letter + '. ' + opt + '</label>';
+    });
+    html += '</div>';
+    if (!isCorrect) html += '<div style="margin-top:5px;color:#28a745;font-weight:600;font-size:0.9rem;">Correct: ' + correctLetter + '. ' + q.o[q.c] + '</div>';
+    html += '</div>';
+  });
+  document.getElementById("adminDetailContainer").innerHTML = html;
+}
+function closeAdminDetail() {
+  document.getElementById("adminDetailScreen").classList.remove("active");
+  document.getElementById("adminScreen").classList.add("active");
+}
+function rEsc(v) { return v === undefined || v === null ? "" : String(v); }
 
 onClassChange();
 restoreExamState();
